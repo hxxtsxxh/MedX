@@ -6,11 +6,13 @@ import DashboardScreen from "../screens/DashboardScreen";
 import LoginScreen from "../screens/LoginScreen";
 import SignupScreen from "../screens/SignupScreen";
 import StartScreen from "../screens/StartScreen";
+import { ThemeProvider } from '../ThemeContext';
 
 const Stack = createStackNavigator();
 
 export default function Index() {
   return (
+    <ThemeProvider>
       <Stack.Navigator initialRouteName="Start" 
       screenOptions={{
         headerShown: false  // This removes all headers from the stack navigator
@@ -20,5 +22,6 @@ export default function Index() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
       </Stack.Navigator>
+    </ThemeProvider>
   );
 }

@@ -1,16 +1,27 @@
+// screens/SignupScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
 const SignupScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSignup = () => {
-    // Add signup logic here
-    // For now, just navigate to Dashboard
-    navigation.navigate('Dashboard');
+  const handleSignup = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert('Passwords do not match', 'Please make sure your passwords match.');
+      return;
+    } else {
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        navigation.navigate('Dashboard');
+      } catch (error) {
+        Alert.alert('Signup Failed', (error as any).message);
+      }
+    }
   };
 
   return (

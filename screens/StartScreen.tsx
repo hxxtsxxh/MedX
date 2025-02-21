@@ -1,3 +1,4 @@
+// screens/StartScreen.tsx
 import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
