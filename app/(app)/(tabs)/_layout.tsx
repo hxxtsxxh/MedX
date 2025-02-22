@@ -36,7 +36,7 @@ export default function TabLayout() {
         ),
         headerStyle: {
           backgroundColor: theme.colors.surface,
-          height: 80,
+          height: 110,
           alignItems: 'center',
           justifyContent: 'center',
           elevation: 0,           // Remove shadow on Android
