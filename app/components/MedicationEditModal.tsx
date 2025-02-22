@@ -5,6 +5,7 @@ import { TimePickerModal } from 'react-native-paper-dates';
 import { Medication, MedicationSchedule } from '../(app)/api/medications';
 import { useMedications } from '../context/MedicationContext';
 import { displayTime, storeTime, formatDosage, getDosageUnit } from '../utils/formatters';
+import { TimePickerWrapper } from './TimePickerWrapper';
 
 interface MedicationEditModalProps {
   visible: boolean;
@@ -177,12 +178,10 @@ export const MedicationEditModal = ({ visible, onDismiss, medication }: Medicati
           </Button>
         </View>
 
-        <TimePickerModal
+        <TimePickerWrapper
           visible={timePickerVisible}
           onDismiss={() => setTimePickerVisible(false)}
           onConfirm={onTimeConfirm}
-          hours={12}
-          minutes={0}
         />
       </Modal>
     </Portal>
