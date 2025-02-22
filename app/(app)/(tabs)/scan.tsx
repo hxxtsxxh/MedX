@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip } from 'react-native-paper';
 import { TimePickerModal } from 'react-native-paper-dates';
 import { enGB, registerTranslation } from 'react-native-paper-dates';
@@ -313,7 +313,19 @@ export default function Scan() {
           )}
         </View>
 
-        <Card style={styles.instructionsCard}>
+        <Card style={[styles.instructionsCard, {
+          elevation: 0,
+          backgroundColor: theme.colors.surface,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 1,
+          },
+          shadowOpacity: 0.18,
+          shadowRadius: 1.0,
+          borderWidth: Platform.OS === 'android' ? 1 : 0,
+          borderColor: 'rgba(0, 0, 0, 0.1)',
+        }]}>
           <Card.Title title="Scanning Instructions" />
           <Card.Content>
             <View style={styles.instruction}>
