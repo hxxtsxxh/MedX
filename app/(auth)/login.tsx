@@ -14,7 +14,8 @@ export default function Login() {
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.replace('/(app)/(tabs)')
+      // The MedicationContext will automatically fetch the user's medications
+      router.replace('/(app)/(tabs)');
     } catch (error) {
       setError((error as any).message);
     }
