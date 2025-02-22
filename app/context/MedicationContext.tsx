@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Medication } from '../(app)/api/medications';
 import { auth, db } from '../../firebaseConfig';
 import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot, updateDoc } from 'firebase/firestore';
@@ -11,6 +11,7 @@ interface MedicationContextType {
   removeMedication: (id: string) => Promise<void>;
   updateMedication: (id: string, medication: Medication) => Promise<void>;
   loading: boolean;
+  refreshMedications: () => Promise<Medication[]>;
 }
 
 const MedicationContext = createContext<MedicationContextType>({
@@ -19,6 +20,7 @@ const MedicationContext = createContext<MedicationContextType>({
   removeMedication: async () => {},
   updateMedication: async () => {},
   loading: false,
+  refreshMedications: async () => [],
 });
 
 export const useMedications = () => useContext(MedicationContext);
@@ -27,6 +29,7 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Set up real-time listener for medications
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
@@ -74,6 +77,29 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
       authUnsubscribe();
     };
   }, []); // Empty dependency array since we want this to run once on mount
+
+  const refreshMedications = useCallback(async () => {
+    if (!auth.currentUser) {
+      console.log('No user logged in during refresh'); // Debug log
+      return [];
+    }
+
+    try {
+      const medicationsRef = collection(db, 'medications');
+      const q = query(medicationsRef, where('userId', '==', auth.currentUser.uid));
+      const snapshot = await getDocs(q);
+      const meds = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Medication[];
+      console.log('Medications refreshed:', meds); // Debug log
+      setMedications(meds);
+      return meds;
+    } catch (error) {
+      console.error('Error refreshing medications:', error);
+      return [];
+    }
+  }, []);
 
   const addMedication = async (medication: Medication) => {
     if (!auth.currentUser) {
@@ -186,12 +212,13 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <MedicationContext.Provider value={{
-      medications,
+    <MedicationContext.Provider value={{ 
+      medications, 
       addMedication,
       removeMedication,
       updateMedication,
-      loading,
+      loading, 
+      refreshMedications,
     }}>
       {children}
     </MedicationContext.Provider>

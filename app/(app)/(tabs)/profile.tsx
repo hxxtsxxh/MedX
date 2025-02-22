@@ -88,6 +88,11 @@ type Medication = {
   schedule?: MedicationSchedule;
 };
 
+/**
+ * @feature Profile Management
+ * @description Manage user profile, settings, and preferences
+ * @location Profile Tab
+ */
 export default function Profile() {
   const theme = useTheme();
   const { isDark, setTheme } = useAppTheme();
@@ -141,6 +146,16 @@ export default function Profile() {
     }
   };
 
+  /**
+   * @action Change Password
+   * @description Update user account password
+   * @steps
+   * 1. Click "Personal Information"
+   * 2. Click "Change Password"
+   * 3. Enter current password
+   * 4. Enter new password
+   * 5. Click "Update Password"
+   */
   const handleUpdatePassword = async () => {
     try {
       if (!currentPassword || !newPassword || !auth.currentUser?.email) {
