@@ -341,6 +341,7 @@ export default function Home() {
         icon="plus"
         style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         onPress={() => router.push('/scan')}
+        color="white"
       />
     </View>
   );
