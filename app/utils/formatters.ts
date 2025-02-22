@@ -93,3 +93,5 @@ export const formatDaysUntil = (days: number): string => {
   if (days === 1) return 'Tomorrow';
   return `In ${days} days`;
 }; 
+
+export default formatDaysUntil;
