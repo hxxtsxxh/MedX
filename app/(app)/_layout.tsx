@@ -15,12 +15,10 @@ export default function AppLayout() {
       <MedicationProvider>
         <ChatProvider>
           <PaperProvider theme={isDark ? darkTheme : lightTheme}>
-            <Stack 
-              screenOptions={{
-                headerShown: false,
-                animation: 'fade',
-              }} 
-            />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="notes" options={{ headerShown: false }} />
+            </Stack>
           </PaperProvider>
         </ChatProvider>
       </MedicationProvider>
