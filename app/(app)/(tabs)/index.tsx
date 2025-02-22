@@ -31,7 +31,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 120,
   },
   searchContainer: {
     padding: 20,
@@ -197,6 +197,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+function getFirstName(fullName: string | null): string {
+  if (!fullName) return 'Guest';
+  return fullName.split(' ')[0];
+}
 
 export default function Home() {
   const theme = useTheme();
@@ -578,8 +583,11 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         >
           <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
             Welcome back,{' '}
-            <Text style={{ color: theme.colors.primary }}>
-              {auth.currentUser?.displayName}
+            <Text style={{ 
+              color: theme.colors.primary,
+              fontWeight: 'bold' 
+            }}>
+              {getFirstName(auth.currentUser?.displayName)}
             </Text>
             !
           </Text>

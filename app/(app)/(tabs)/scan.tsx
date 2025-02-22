@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 120,
   },
   scanArea: {
     alignItems: 'center',
