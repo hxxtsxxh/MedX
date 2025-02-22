@@ -9,9 +9,11 @@ import { format } from 'date-fns';
 import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
 import { auth } from '../../../firebaseConfig';
 import { MedicationActions } from '../../components/MedicationActions';
+import { useTheme as useAppTheme } from '../../context/ThemeContext';
 
 export default function Home() {
   const theme = useTheme();
+  const { isDark } = useAppTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
   const { medications, loading } = useMedications();
@@ -97,8 +99,11 @@ export default function Home() {
         >
           <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
             Welcome back,{' '}
-            <Text style={{ color: theme.colors.primary }}>
-              {auth.currentUser?.displayName}
+            <Text style={{ 
+              color: isDark ? theme.colors.primary : theme.colors.primaryContainer,
+              fontWeight: '600' 
+            }}>
+              {auth.currentUser?.displayName?.split(' ')[0]}
             </Text>
             !
           </Text>
