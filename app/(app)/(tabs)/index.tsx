@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMedications } from '../../context/MedicationContext';
 import { format } from 'date-fns';
 import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
+import { auth } from '../../../firebaseConfig';
 
 export default function Home() {
   const theme = useTheme();
@@ -94,7 +95,11 @@ export default function Home() {
           style={styles.header}
         >
           <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-            Welcome back, {global.user?.name}!
+            Welcome back,{' '}
+            <Text style={{ color: theme.colors.primary }}>
+              {auth.currentUser?.displayName}
+            </Text>
+            !
           </Text>
           <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
             Track your medications and stay healthy
