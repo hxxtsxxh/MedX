@@ -24,7 +24,7 @@ function RootLayoutNav() {
     if (!global.user) {
       router.replace('/login');
     }
-    window.frameworkReady?.();
+    // Remove the window.frameworkReady call since it's not a valid property
   }, []);
 
   return (
