@@ -599,7 +599,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView>
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
@@ -758,7 +758,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                         <Text style={styles.divider}>•</Text>
                         <Text style={styles.dosageText}>
                           {med.schedule?.dosage}
-                      </Text>
+                        </Text>
                       </View>
 
                         <Text style={styles.scheduleText}>
@@ -778,8 +778,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                         <MedicationActions medication={med} showTakeAction={false} />
                       </View>
                     </MotiView>
-                  ))}
-              </View>
+                  ))
             ) : (
               <Text variant="bodyMedium">No upcoming doses</Text>
             )}
