@@ -4,6 +4,7 @@ import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal } from 'rea
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { auth } from '../../../firebaseConfig';
 
 export default function Home() {
   const theme = useTheme();
@@ -37,7 +38,11 @@ export default function Home() {
           style={styles.header}
         >
           <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-            Welcome back, {global.user?.name}!
+            Welcome back,{' '}
+            <Text style={{ color: theme.colors.primary }}>
+              {auth.currentUser?.displayName}
+            </Text>
+            !
           </Text>
           <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
             Track your medications and stay healthy
