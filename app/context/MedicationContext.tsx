@@ -27,52 +27,53 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Set up real-time listener for user-specific medications
   useEffect(() => {
-    let unsubscribe: () => void;
+    let unsubscribe: (() => void) | undefined;
 
-    const setupMedicationListener = () => {
-      if (auth.currentUser) {
+    const authUnsubscribe = auth.onAuthStateChanged((user) => {
+      // Clear existing listener if it exists
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = undefined;
+      }
+
+      if (user) {
+        // User is signed in, set up the medications listener
         setLoading(true);
         const q = query(
           collection(db, 'medications'),
-          where('userId', '==', auth.currentUser.uid)
+          where('userId', '==', user.uid)
         );
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const meds = snapshot.docs.map(doc => ({
-            ...doc.data() as Medication,
-            id: doc.id,
-          }));
-          setMedications(meds);
-          setLoading(false);
-        }, (error) => {
-          console.error('Error fetching medications:', error);
-          setLoading(false);
-        });
+        unsubscribe = onSnapshot(q, 
+          (snapshot) => {
+            const meds = snapshot.docs.map(doc => ({
+              ...doc.data() as Medication,
+              id: doc.id,
+            }));
+            setMedications(meds);
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Error fetching medications:', error);
+            setLoading(false);
+          }
+        );
       } else {
-        setMedications([]);
-        setLoading(false);
-      }
-    };
-
-    // Listen for auth state changes
-    const authUnsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setupMedicationListener();
-      } else {
+        // User is signed out, clear medications
         setMedications([]);
         setLoading(false);
       }
     });
 
+    // Cleanup function
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
       authUnsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array since we want this to run once on mount
 
   const addMedication = async (medication: Medication) => {
     if (!auth.currentUser) {
@@ -185,12 +186,12 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <MedicationContext.Provider value={{ 
-      medications, 
-      addMedication, 
-      removeMedication, 
-      updateMedication, 
-      loading 
+    <MedicationContext.Provider value={{
+      medications,
+      addMedication,
+      removeMedication,
+      updateMedication,
+      loading,
     }}>
       {children}
     </MedicationContext.Provider>
