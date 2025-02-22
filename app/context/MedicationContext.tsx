@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Medication } from '../(app)/api/medications';
 import { auth, db } from '../../firebaseConfig';
-import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { showMessage } from 'react-native-flash-message';
 import { MotiView } from 'moti';
 
@@ -9,14 +9,18 @@ interface MedicationContextType {
   medications: Medication[];
   addMedication: (medication: Medication) => Promise<string | void>;
   removeMedication: (id: string) => Promise<void>;
+  updateMedication: (id: string, medication: Medication) => Promise<void>;
   loading: boolean;
+  refreshMedications: () => Promise<Medication[]>;
 }
 
 const MedicationContext = createContext<MedicationContextType>({
   medications: [],
   addMedication: async () => {},
   removeMedication: async () => {},
+  updateMedication: async () => {},
   loading: false,
+  refreshMedications: async () => [],
 });
 
 export const useMedications = () => useContext(MedicationContext);
@@ -25,51 +29,76 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Set up real-time listener for user-specific medications
+  // Set up real-time listener for medications
   useEffect(() => {
-    let unsubscribe: () => void;
+    let unsubscribe: (() => void) | undefined;
 
-    const setupMedicationListener = () => {
-      if (auth.currentUser) {
+    const authUnsubscribe = auth.onAuthStateChanged((user) => {
+      // Clear existing listener if it exists
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = undefined;
+      }
+
+      if (user) {
+        // User is signed in, set up the medications listener
         setLoading(true);
         const q = query(
           collection(db, 'medications'),
-          where('userId', '==', auth.currentUser.uid)
+          where('userId', '==', user.uid)
         );
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const meds = snapshot.docs.map(doc => ({
-            ...doc.data() as Medication,
-            id: doc.id,
-          }));
-          setMedications(meds);
-          setLoading(false);
-        }, (error) => {
-          console.error('Error fetching medications:', error);
-          setLoading(false);
-        });
+        unsubscribe = onSnapshot(q, 
+          (snapshot) => {
+            const meds = snapshot.docs.map(doc => ({
+              ...doc.data() as Medication,
+              id: doc.id,
+            }));
+            setMedications(meds);
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Error fetching medications:', error);
+            setLoading(false);
+          }
+        );
       } else {
-        setMedications([]);
-        setLoading(false);
-      }
-    };
-
-    // Listen for auth state changes
-    const authUnsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setupMedicationListener();
-      } else {
+        // User is signed out, clear medications
         setMedications([]);
         setLoading(false);
       }
     });
 
+    // Cleanup function
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
       authUnsubscribe();
     };
+  }, []); // Empty dependency array since we want this to run once on mount
+
+  const refreshMedications = useCallback(async () => {
+    if (!auth.currentUser) {
+      console.log('No user logged in during refresh'); // Debug log
+      return [];
+    }
+
+    try {
+      const medicationsRef = collection(db, 'medications');
+      const q = query(medicationsRef, where('userId', '==', auth.currentUser.uid));
+      const snapshot = await getDocs(q);
+      const meds = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Medication[];
+      console.log('Medications refreshed:', meds); // Debug log
+      setMedications(meds);
+      return meds;
+    } catch (error) {
+      console.error('Error refreshing medications:', error);
+      return [];
+    }
   }, []);
 
   const addMedication = async (medication: Medication) => {
@@ -146,8 +175,51 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const updateMedication = async (id: string, medication: Medication) => {
+    if (!auth.currentUser) {
+      showMessage({
+        message: "Authentication Error",
+        description: "Please sign in to update medications",
+        type: "danger",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const medicationRef = doc(db, 'medications', id);
+      await updateDoc(medicationRef, {
+        ...medication,
+        updated_at: new Date().toISOString(),
+      });
+      
+      showMessage({
+        message: "Medication Updated",
+        description: `${medication.brand_name} has been updated`,
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error updating medication:', error);
+      showMessage({
+        message: "Error Updating Medication",
+        description: "Please try again",
+        type: "danger",
+        duration: 3000,
+      });
+      throw error;
+    }
+  };
+
   return (
-    <MedicationContext.Provider value={{ medications, addMedication, removeMedication, loading }}>
+    <MedicationContext.Provider value={{ 
+      medications, 
+      addMedication,
+      removeMedication,
+      updateMedication,
+      loading, 
+      refreshMedications,
+    }}>
       {children}
     </MedicationContext.Provider>
   );
