@@ -6,6 +6,7 @@ import { useMedications } from '../../context/MedicationContext';
 import { getDrugInteractions } from '../api/medications';
 import { Ionicons } from '@expo/vector-icons';
 import { formatTime, formatDosage, displayTime } from '../../utils/formatters';
+import { MedicationActions } from '../../components/MedicationActions';
 
 export default function Interactions() {
   const theme = useTheme();
@@ -92,11 +93,7 @@ export default function Interactions() {
                       {med.schedule?.times.map(displayTime).join(', ')}
                     </Text>
                   </View>
-                  <IconButton
-                    icon="close"
-                    size={20}
-                    onPress={() => removeMedication(med.id)}
-                  />
+                  <MedicationActions medication={med} />
                 </Surface>
               </MotiView>
             ))}

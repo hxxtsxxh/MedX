@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Medication } from '../(app)/api/medications';
 import { auth, db } from '../../firebaseConfig';
-import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { showMessage } from 'react-native-flash-message';
 import { MotiView } from 'moti';
 
@@ -9,6 +9,7 @@ interface MedicationContextType {
   medications: Medication[];
   addMedication: (medication: Medication) => Promise<string | void>;
   removeMedication: (id: string) => Promise<void>;
+  updateMedication: (id: string, medication: Medication) => Promise<void>;
   loading: boolean;
 }
 
@@ -16,6 +17,7 @@ const MedicationContext = createContext<MedicationContextType>({
   medications: [],
   addMedication: async () => {},
   removeMedication: async () => {},
+  updateMedication: async () => {},
   loading: false,
 });
 
@@ -146,8 +148,50 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const updateMedication = async (id: string, medication: Medication) => {
+    if (!auth.currentUser) {
+      showMessage({
+        message: "Authentication Error",
+        description: "Please sign in to update medications",
+        type: "danger",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const medicationRef = doc(db, 'medications', id);
+      await updateDoc(medicationRef, {
+        ...medication,
+        updated_at: new Date().toISOString(),
+      });
+      
+      showMessage({
+        message: "Medication Updated",
+        description: `${medication.brand_name} has been updated`,
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error updating medication:', error);
+      showMessage({
+        message: "Error Updating Medication",
+        description: "Please try again",
+        type: "danger",
+        duration: 3000,
+      });
+      throw error;
+    }
+  };
+
   return (
-    <MedicationContext.Provider value={{ medications, addMedication, removeMedication, loading }}>
+    <MedicationContext.Provider value={{ 
+      medications, 
+      addMedication, 
+      removeMedication, 
+      updateMedication, 
+      loading 
+    }}>
       {children}
     </MedicationContext.Provider>
   );
