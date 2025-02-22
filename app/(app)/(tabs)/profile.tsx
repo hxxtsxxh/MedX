@@ -19,6 +19,8 @@ import { useMedications } from '../../context/MedicationContext';
 import { formatDosage, displayTime } from '../../utils/formatters';
 import * as Print from 'expo-print';
 import axios from 'axios';
+import { DailyNotes } from '../../components/DailyNotes';
+import { useNotes } from '../../context/NotesContext';
 
 const styles = StyleSheet.create({
   container: {
@@ -114,6 +116,9 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const { notes, addNote, deleteNote, loading: loadingNotes } = useNotes();
+  const [notesVisible, setNotesVisible] = useState(false);
+  const [newNote, setNewNote] = useState('');
 
   // Initialize profile image from auth on mount
   React.useEffect(() => {
@@ -385,6 +390,25 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
     }
   };
 
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    
+    try {
+      await addNote(newNote.trim());
+      setNewNote('');
+    } catch (error) {
+      console.error('Error adding note:', error);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteNote(noteId);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <MotiView
@@ -444,10 +468,10 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         <List.Subheader>Health Data</List.Subheader>
         
         <List.Item
-          title="Connected Services"
-          description="Manage your connected health services"
-          left={props => <List.Icon {...props} icon="link" />}
-          onPress={() => {}}
+          title="Daily Notes"
+          description="Keep track of your daily thoughts and observations"
+          left={props => <List.Icon {...props} icon="notebook" />}
+          onPress={() => router.push('/(app)/notes')}
         />
 
         <List.Item
