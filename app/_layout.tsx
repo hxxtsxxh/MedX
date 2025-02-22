@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { lightTheme, darkTheme } from './constants/theme';
+import { MedicationProvider } from './context/MedicationContext';
 import React from 'react';
 
 declare global {
@@ -27,18 +28,20 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <PaperProvider theme={isDark ? darkTheme : lightTheme}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-        }}>
-          <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-          <Stack.Screen name="(app)" options={{ animation: 'slide_from_right' }} />
-        </Stack>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-      </GestureHandlerRootView>
-    </PaperProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <MedicationProvider>
+        <PaperProvider theme={isDark ? darkTheme : lightTheme}>
+          <Stack screenOptions={{
+            headerShown: false,
+            animation: 'fade',
+          }}>
+            <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+            <Stack.Screen name="(app)" options={{ animation: 'slide_from_right' }} />
+          </Stack>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+        </PaperProvider>
+      </MedicationProvider>
+    </GestureHandlerRootView>
   );
 }
 
