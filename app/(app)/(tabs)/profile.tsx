@@ -4,6 +4,8 @@ import { useTheme, Text, Avatar, Switch, List, Button, Divider } from 'react-nat
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
+import { getAuth, signOut } from 'firebase/auth';
 
 export default function Profile() {
   const theme = useTheme();
@@ -31,6 +33,17 @@ export default function Profile() {
 
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const auth = getAuth();
+      await signOut(auth);
+      router.replace('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      alert('Failed to sign out');
     }
   };
 
@@ -136,7 +149,7 @@ export default function Profile() {
         <Button
           mode="contained-tonal"
           icon="logout"
-          onPress={() => {}}
+          onPress={handleSignOut}
           style={styles.button}
         >
           Sign Out
