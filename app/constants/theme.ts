@@ -2,102 +2,113 @@ import { MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
 
 // Define your custom colors
 const customColors = {
-  primary: '#0D2F5D',    // Dark blue
-  secondary: '#78A8D9',  // Medium blue
-  tertiary: '#CADEED',   // Light blue
-  darkBlue: '#092442',   // Darker version of primary
-  lightBlue: '#E5F0F7',  // Lighter version of tertiary
-  background: '#F8FBFD',
+  light: {
+    primary: '#0D47A1',      // Deep Blue
+    secondary: '#1976D2',    // Medium Blue
+    tertiary: '#42A5F5',     // Light Blue
+    surface: '#FFFFFF',
+    background: '#F5F9FF',   // Very Light Blue tint
+    surfaceVariant: '#EEF2F6',
+    error: '#D32F2F',
+    onPrimary: '#FFFFFF',
+    onSecondary: '#FFFFFF',
+    onTertiary: '#FFFFFF',
+    onSurface: '#1C1B1F',
+    onBackground: '#1C1B1F',
+    onSurfaceVariant: '#44474F',
+    outline: '#74777F',
+    elevation: {
+      level0: 'transparent',
+      level1: '#F6F8FB',
+      level2: '#F1F4F9',
+      level3: '#ECF0F6',
+      level4: '#E7EDF4',
+      level5: '#E2E9F1',
+    },
+  },
+  dark: {
+    primary: '#90CAF9',      // Light Blue
+    secondary: '#64B5F6',    // Medium Light Blue
+    tertiary: '#42A5F5',     // Medium Blue
+    surface: '#1A1C1E',
+    background: '#111315',   // Very Dark Blue-grey
+    surfaceVariant: '#252729',
+    error: '#EF5350',
+    onPrimary: '#003064',
+    onSecondary: '#003064',
+    onTertiary: '#003064',
+    onSurface: '#E3E2E6',
+    onBackground: '#E3E2E6',
+    onSurfaceVariant: '#C4C6D0',
+    outline: '#8E9099',
+    elevation: {
+      level0: 'transparent',
+      level1: '#1E2022',
+      level2: '#232527',
+      level3: '#282A2C',
+      level4: '#2D2F31',
+      level5: '#323436',
+    },
+  }
 };
 
 export const lightTheme = {
   ...MD3LightTheme,
   colors: {
-    // Override all MD3 colors with our blue palette
-    primary: customColors.primary,
-    onPrimary: '#FFFFFF',
-    primaryContainer: customColors.secondary,
-    onPrimaryContainer: customColors.primary,
-    secondary: customColors.secondary,
-    onSecondary: customColors.primary,
-    secondaryContainer: customColors.tertiary,
-    onSecondaryContainer: customColors.primary,
-    tertiary: customColors.tertiary,
-    onTertiary: customColors.primary,
-    tertiaryContainer: customColors.lightBlue,
-    onTertiaryContainer: customColors.primary,
-    background: customColors.background,
-    onBackground: customColors.primary,
-    surface: customColors.lightBlue,
-    onSurface: customColors.primary,
-    surfaceVariant: customColors.tertiary,
-    onSurfaceVariant: customColors.secondary,
-    surfaceDisabled: customColors.tertiary,
-    onSurfaceDisabled: customColors.secondary,
-    outline: customColors.secondary,
-    outlineVariant: customColors.tertiary,
-    shadow: customColors.darkBlue,
-    scrim: customColors.darkBlue,
-    inverseSurface: customColors.primary,
-    inverseOnSurface: customColors.tertiary,
-    inversePrimary: customColors.tertiary,
-    error: customColors.darkBlue,
-    onError: customColors.tertiary,
-    errorContainer: customColors.primary,
-    onErrorContainer: customColors.tertiary,
-    elevation: {
-      level0: 0,
-      level1: 1,
-      level2: 2,
-      level3: 3,
-      level4: 4,
-      level5: 5,
-    },
+    ...MD3LightTheme.colors,
+    ...customColors.light,
+    primaryContainer: customColors.light.surfaceVariant,
+    secondaryContainer: customColors.light.surfaceVariant,
+    tertiaryContainer: customColors.light.surfaceVariant,
+    onPrimaryContainer: customColors.light.primary,
+    onSecondaryContainer: customColors.light.secondary,
+    onTertiaryContainer: customColors.light.tertiary,
   },
+  roundness: 2,
 };
 
 export const darkTheme = {
   ...MD3DarkTheme,
   colors: {
-    // Override all MD3 colors with our blue palette
-    primary: customColors.tertiary,
-    onPrimary: customColors.primary,
-    primaryContainer: customColors.secondary,
-    onPrimaryContainer: customColors.tertiary,
-    secondary: customColors.secondary,
-    onSecondary: customColors.tertiary,
-    secondaryContainer: customColors.primary,
-    onSecondaryContainer: customColors.tertiary,
-    tertiary: customColors.primary,
-    onTertiary: customColors.tertiary,
-    tertiaryContainer: customColors.darkBlue,
-    onTertiaryContainer: customColors.tertiary,
-    background: customColors.darkBlue,
-    onBackground: customColors.tertiary,
-    surface: customColors.primary,
-    onSurface: customColors.tertiary,
-    surfaceVariant: customColors.secondary,
-    onSurfaceVariant: customColors.tertiary,
-    surfaceDisabled: customColors.darkBlue,
-    onSurfaceDisabled: customColors.secondary,
-    outline: customColors.secondary,
-    outlineVariant: customColors.tertiary,
-    shadow: customColors.darkBlue,
-    scrim: customColors.darkBlue,
-    inverseSurface: customColors.tertiary,
-    inverseOnSurface: customColors.primary,
-    inversePrimary: customColors.primary,
-    error: customColors.tertiary,
-    onError: customColors.primary,
-    errorContainer: customColors.secondary,
-    onErrorContainer: customColors.primary,
+    ...MD3DarkTheme.colors,
+    ...customColors.dark,
+    primaryContainer: customColors.dark.surfaceVariant,
+    secondaryContainer: customColors.dark.surfaceVariant,
+    tertiaryContainer: customColors.dark.surfaceVariant,
+    onPrimaryContainer: customColors.dark.primary,
+    onSecondaryContainer: customColors.dark.secondary,
+    onTertiaryContainer: customColors.dark.tertiary,
+  },
+  roundness: 2,
+};
+
+// Fix the type error in _layout.tsx by adding string type to elevation values
+export const fixedLightTheme = {
+  ...lightTheme,
+  colors: {
+    ...lightTheme.colors,
     elevation: {
-      level0: 0,
-      level1: 1,
-      level2: 2,
-      level3: 3,
-      level4: 4,
-      level5: 5,
+      level0: '0px',
+      level1: '1px',
+      level2: '2px',
+      level3: '3px',
+      level4: '4px',
+      level5: '5px',
+    },
+  },
+};
+
+export const fixedDarkTheme = {
+  ...darkTheme,
+  colors: {
+    ...darkTheme.colors,
+    elevation: {
+      level0: '0px',
+      level1: '1px',
+      level2: '2px',
+      level3: '3px',
+      level4: '4px',
+      level5: '5px',
     },
   },
 };
