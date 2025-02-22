@@ -87,10 +87,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
+    padding: 20,
     paddingTop: 120,
   },
 });
@@ -293,15 +290,21 @@ If no interactions exist, return [].`;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <Text variant="titleLarge">Drug Interactions</Text>
-        <IconButton
-          icon="refresh"
-          size={24}
-          onPress={analyzeInteractions}
-          disabled={loading || medications.length <= 1}
-        />
-      </View>
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        style={styles.header}
+      >
+        <Text variant="headlineMedium">
+          Drug Interaction
+        </Text>
+        <Text 
+          variant="bodyLarge" 
+          style={{ color: theme.colors.onSurfaceVariant }}
+        >
+          Check potential interactions between your medications
+        </Text>
+      </MotiView>
       
       {interactions.length === 0 ? (
         <MotiView
