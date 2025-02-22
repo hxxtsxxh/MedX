@@ -1,13 +1,12 @@
-// screens/SignupScreen.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, Image } from 'react-native';
-import { NavigationProp } from '@react-navigation/native';
+import { Link, router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { auth } from '../../firebaseConfig';
 
-const SignupScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
+export default function SignUp(){
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,7 +20,7 @@ const SignupScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
     
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigation.navigate('Dashboard');
+      router.replace('/(app)/(tabs)')
     } catch (error) {
       setError((error as any).message);
     }
@@ -30,7 +29,7 @@ const SignupScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
   return (
     <LinearGradient colors={['#cadeed', '#7888d9', '#0d2f5d']}
     style={styles.container}>
-        <Image source={require('../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
+        <Image source={require('../../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
         <Text style={styles.subtitle}>Your Medication Safety Companion</Text>
 
         {error ? (
@@ -77,9 +76,11 @@ const SignupScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Link href="/login" asChild>
+            <TouchableOpacity>
               <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
+          </Link>
         </View>
     </LinearGradient>
   );
@@ -151,5 +152,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default SignupScreen;

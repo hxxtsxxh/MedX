@@ -1,15 +1,12 @@
-// screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, Platform, Image, ImageComponent } from 'react-native';
-import { Link } from '@react-navigation/native';
-import { NavigationProp } from '@react-navigation/native';
+import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { auth } from '../../firebaseConfig';
 
-const LoginScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +14,7 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigation.navigate('Dashboard');
+      router.replace('/(app)/(tabs)')
     } catch (error) {
       setError((error as any).message);
     }
@@ -26,7 +23,7 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
   return (
     <LinearGradient colors={['#cadeed', '#7888d9', '#0d2f5d']}
     style={styles.container}>
-        <Image source={require('../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
+        <Image source={require('../../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
         <Text style={styles.subtitle}>Your Medication Safety Companion</Text>
 
         {error ? (
@@ -62,9 +59,11 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+          <Link href={'/signup'} asChild>
+            <TouchableOpacity>
               <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
+          </Link>
         </View>
     </LinearGradient>
   );
@@ -174,6 +173,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-
-export default LoginScreen;
