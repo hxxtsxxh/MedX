@@ -3,11 +3,12 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, I
 import { Link, router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../../firebaseConfig';
 
 export default function SignUp(){
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,10 @@ export default function SignUp(){
     }
     
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, {
+        displayName: name
+      });
       router.replace('/(app)/(tabs)')
     } catch (error) {
       setError((error as any).message);
@@ -31,7 +35,16 @@ export default function SignUp(){
     style={styles.container}>
         <Image source={require('../../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
         <Text style={styles.subtitle}>Your Medication Safety Companion</Text>
-
+        <View style={styles.inputContainer}>
+          <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
+        </View>
         {error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : null}
