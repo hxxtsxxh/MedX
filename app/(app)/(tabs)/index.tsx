@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
@@ -115,43 +115,106 @@ export default function Home() {
           />
         </View>
 
-        <Card style={styles.section}>
-          <Card.Title title="Today's Schedule" />
-          <Card.Content>
+        <Card style={[styles.section, {
+          elevation: 0,
+          backgroundColor: theme.colors.surface,
+          ...(Platform.OS === 'android' ? {
+            borderWidth: 1,
+            borderColor: 'rgba(0, 0, 0, 0.1)',
+          } : {
+            shadowColor: '#000',
+            shadowOffset: {
+              width: 0,
+              height: 1,
+            },
+            shadowOpacity: 0.18,
+            shadowRadius: 1.0,
+          }),
+        }]}>
+          <Card.Title 
+            title="Today's Schedule" 
+            titleStyle={{
+              fontWeight: '500',
+              includeFontPadding: false,
+            }}
+          />
+          <Card.Content style={{ elevation: 0 }}>
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.morning.length > 0 ? (
               groupedMedications.morning.map((med, index) => (
                 <MotiView
                   key={med.id}
-                  from={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                  style={styles.medicationItem}
+                  from={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ type: 'timing', duration: 300, delay: index * 100 }}
+                  style={[styles.medicationItem, {
+                    elevation: 0,
+                    backgroundColor: 'transparent',
+                  }]}
                 >
-                  <View style={styles.medicationInfo}>
-                    <Text variant="titleMedium">{med.brand_name}</Text>
-                    <Text variant="bodyMedium">
+                  <View style={[styles.medicationInfo, {
+                    elevation: 0,
+                    backgroundColor: 'transparent',
+                  }]}>
+                    <Text variant="titleMedium" style={{
+                      fontWeight: '500',
+                      color: theme.colors.onSurface,
+                      includeFontPadding: false,
+                      textAlign: 'left',
+                      letterSpacing: 0,
+                    }}>{med.brand_name}</Text>
+                    <Text variant="bodyMedium" style={{
+                      color: theme.colors.onSurfaceVariant,
+                      includeFontPadding: false,
+                      textAlign: 'left',
+                      letterSpacing: 0,
+                    }}>
                       {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
                     </Text>
                     {med.schedule?.frequency !== 'daily' && (
-                      <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
+                      <Text variant="bodySmall" style={{
+                        color: theme.colors.primary,
+                        includeFontPadding: false,
+                        textAlign: 'left',
+                        letterSpacing: 0,
+                      }}>
                         {med.schedule?.frequency === 'weekly' 
                           ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
                           : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
                       </Text>
                     )}
                   </View>
-                  <Text variant="bodySmall">Today</Text>
+                  <Text variant="bodySmall" style={{
+                    includeFontPadding: false,
+                    textAlign: 'right',
+                    letterSpacing: 0,
+                  }}>Today</Text>
                 </MotiView>
               ))
             ) : (
-              <Text variant="bodyMedium">No medications scheduled for today</Text>
+              <Text variant="bodyMedium" style={{
+                includeFontPadding: false,
+                textAlign: 'left',
+                letterSpacing: 0,
+              }}>No medications scheduled for today</Text>
             )}
           </Card.Content>
         </Card>
 
-        <Card style={styles.section}>
+        <Card style={[styles.section, {
+          elevation: 0,
+          backgroundColor: theme.colors.surface,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 1,
+          },
+          shadowOpacity: 0.18,
+          shadowRadius: 1.0,
+          borderWidth: Platform.OS === 'android' ? 1 : 0,
+          borderColor: 'rgba(0, 0, 0, 0.1)',
+        }]}>
           <Card.Title title="Upcoming Doses" />
           <Card.Content>
             {loading ? (
@@ -197,7 +260,19 @@ export default function Home() {
           </Card.Content>
         </Card>
 
-        <Card style={styles.section}>
+        <Card style={[styles.section, {
+          elevation: 0,
+          backgroundColor: theme.colors.surface,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 1,
+          },
+          shadowOpacity: 0.18,
+          shadowRadius: 1.0,
+          borderWidth: Platform.OS === 'android' ? 1 : 0,
+          borderColor: 'rgba(0, 0, 0, 0.1)',
+        }]}>
           <Card.Title title="Quick Actions" />
           <Card.Content style={styles.quickActions}>
             <Button
@@ -266,6 +341,7 @@ export default function Home() {
         icon="plus"
         style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         onPress={() => router.push('/scan')}
+        color="white"
       />
     </View>
   );
@@ -296,10 +372,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'transparent',
   },
   medicationInfo: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   quickActions: {
     flexDirection: 'row',

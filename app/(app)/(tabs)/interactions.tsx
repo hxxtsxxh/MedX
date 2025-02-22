@@ -58,9 +58,7 @@ export default function Interactions() {
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
         transition={{
-          type: 'timing',
-          duration: 600,
-          property: 'all'
+          duration: 600
         }}
         style={styles.header}
       >
