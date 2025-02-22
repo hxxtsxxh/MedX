@@ -1,32 +1,67 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { useTheme, Text, Card, Chip, Button, DataTable } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { useTheme, Text, Card, Chip, Button, Surface, IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
+import { useMedications } from '../../context/MedicationContext';
+import { getDrugInteractions } from '../api/medications';
+import { Ionicons } from '@expo/vector-icons';
+import { formatTime, formatDosage, displayTime } from '../../utils/formatters';
 
 export default function Interactions() {
   const theme = useTheme();
+  const { medications, removeMedication, loading } = useMedications();
+  const [interactions, setInteractions] = useState<string[]>([]);
+  const [checkingInteractions, setCheckingInteractions] = useState(false);
 
-  const interactions = [
-    {
-      medications: ['Aspirin', 'Warfarin'],
-      severity: 'High',
-      description: 'Increased risk of bleeding when taken together',
-      recommendation: 'Consult healthcare provider for alternative medications',
-    },
-    {
-      medications: ['Lisinopril', 'Potassium supplements'],
-      severity: 'Medium',
-      description: 'May cause high potassium levels',
-      recommendation: 'Monitor potassium levels regularly',
-    },
-  ];
+  useEffect(() => {
+    checkInteractions();
+  }, [medications]);
+
+  const checkInteractions = async () => {
+    if (medications.length < 2) {
+      setInteractions([]);
+      return;
+    }
+
+    setCheckingInteractions(true);
+    try {
+      const results = await getDrugInteractions(medications);
+      setInteractions(results);
+    } catch (error) {
+      console.error('Error checking interactions:', error);
+    } finally {
+      setCheckingInteractions(false);
+    }
+  };
+
+  const getInteractionSeverity = (interaction: string): 'low' | 'medium' | 'high' => {
+    const lowKeywords = ['mild', 'minor', 'minimal'];
+    const highKeywords = ['severe', 'dangerous', 'avoid', 'serious'];
+    
+    const text = interaction.toLowerCase();
+    if (highKeywords.some(keyword => text.includes(keyword))) return 'high';
+    if (lowKeywords.some(keyword => text.includes(keyword))) return 'low';
+    return 'medium';
+  };
+
+  const getSeverityColor = (severity: 'low' | 'medium' | 'high') => {
+    switch (severity) {
+      case 'low': return theme.colors.primary;
+      case 'medium': return '#FFA500';
+      case 'high': return theme.colors.error;
+    }
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 600 }}
+        transition={{
+          type: 'timing',
+          duration: 600,
+          property: 'all'
+        }}
         style={styles.header}
       >
         <Text variant="headlineMedium">Drug Interactions</Text>
@@ -35,84 +70,92 @@ export default function Interactions() {
         </Text>
       </MotiView>
 
-      <Card style={styles.section}>
-        <Card.Title title="Current Medications" />
-        <Card.Content>
+      <Surface style={[styles.medicationList, { backgroundColor: theme.colors.surfaceVariant }]}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Current Medications</Text>
+        {loading ? (
+          <ActivityIndicator style={styles.loader} />
+        ) : (
           <View style={styles.chipContainer}>
-            <Chip mode="outlined" onPress={() => {}}>Aspirin</Chip>
-            <Chip mode="outlined" onPress={() => {}}>Lisinopril</Chip>
-            <Chip mode="outlined" onPress={() => {}}>Metformin</Chip>
-          </View>
-          <Button
-            mode="contained"
-            onPress={() => {}}
-            style={styles.addButton}
-          >
-            Add Medication
-          </Button>
-        </Card.Content>
-      </Card>
-
-      <Card style={styles.section}>
-        <Card.Title title="Detected Interactions" />
-        <Card.Content>
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>Medications</DataTable.Title>
-              <DataTable.Title>Severity</DataTable.Title>
-            </DataTable.Header>
-
-            {interactions.map((interaction, index) => (
+            {medications.map((med) => (
               <MotiView
-                key={index}
-                from={{ opacity: 0, scale: 0.9 }}
+                key={med.id}
+                from={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'timing', duration: 600, delay: index * 100 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                style={styles.medicationCard}
               >
-                <DataTable.Row>
-                  <DataTable.Cell>{interaction.medications.join(' + ')}</DataTable.Cell>
-                  <DataTable.Cell>
-                    <Chip
-                      mode="flat"
-                      style={{
-                        backgroundColor:
-                          interaction.severity === 'High'
-                            ? theme.colors.error
-                            : theme.colors.primary,
-                      }}
-                    >
-                      {interaction.severity}
-                    </Chip>
-                  </DataTable.Cell>
-                </DataTable.Row>
-                <View style={styles.interactionDetails}>
-                  <Text variant="bodyMedium">{interaction.description}</Text>
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: theme.colors.onSurfaceVariant }}
-                  >
-                    Recommendation: {interaction.recommendation}
-                  </Text>
-                </View>
+                <Surface style={[styles.medCardContent, { backgroundColor: theme.colors.surface }]}>
+                  <View style={styles.medInfo}>
+                    <Text variant="titleMedium">{med.brand_name}</Text>
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {formatDosage(med.schedule?.dosage || '')}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {med.schedule?.times.map(displayTime).join(', ')}
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="close"
+                    size={20}
+                    onPress={() => removeMedication(med.id)}
+                  />
+                </Surface>
               </MotiView>
             ))}
-          </DataTable>
-        </Card.Content>
-      </Card>
-
-      <Card style={styles.section}>
-        <Card.Title title="AI Analysis" />
-        <Card.Content>
-          <Text variant="bodyMedium">
-            Our AI system has analyzed your medication combinations using:
-          </Text>
-          <View style={styles.aiFeatures}>
-            <Chip icon="database" mode="outlined">FDA Database</Chip>
-            <Chip icon="brain" mode="outlined">ML Predictions</Chip>
-            <Chip icon="chart-bubble" mode="outlined">Knowledge Graph</Chip>
           </View>
-        </Card.Content>
-      </Card>
+        )}
+      </Surface>
+
+      <Surface style={[styles.interactionsContainer, { backgroundColor: theme.colors.surface }]}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Potential Interactions</Text>
+        {checkingInteractions ? (
+          <ActivityIndicator style={styles.loader} />
+        ) : interactions.length > 0 ? (
+          interactions.map((interaction, index) => {
+            const severity = getInteractionSeverity(interaction);
+            return (
+              <MotiView
+                key={index}
+                from={{ opacity: 0, translateY: 20 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ delay: index * 100 }}
+                style={[
+                  styles.interactionItem,
+                  { borderLeftColor: getSeverityColor(severity) }
+                ]}
+              >
+                <View style={styles.severityIndicator}>
+                  <Ionicons
+                    name={severity === 'high' ? 'warning' : 'information-circle'}
+                    size={24}
+                    color={getSeverityColor(severity)}
+                  />
+                  <Text
+                    variant="labelSmall"
+                    style={[styles.severityLabel, { color: getSeverityColor(severity) }]}
+                  >
+                    {severity.toUpperCase()} RISK
+                  </Text>
+                </View>
+                <Text variant="bodyMedium">{interaction}</Text>
+              </MotiView>
+            );
+          })
+        ) : (
+          <View style={styles.noInteractions}>
+            <Ionicons name="checkmark-circle" size={48} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={{ textAlign: 'center', marginTop: 16 }}>
+              No interactions detected
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant, marginTop: 8 }}
+            >
+              Your current medication combination appears to be safe
+            </Text>
+          </View>
+        )}
+      </Surface>
     </ScrollView>
   );
 }
@@ -125,29 +168,56 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 40,
   },
-  section: {
+  medicationList: {
     margin: 20,
-    marginTop: 0,
+    padding: 16,
+    borderRadius: 16,
+  },
+  sectionTitle: {
+    marginBottom: 16,
   },
   chipContainer: {
+    gap: 12,
+  },
+  medicationCard: {
+    marginBottom: 8,
+  },
+  medCardContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
   },
-  addButton: {
-    marginTop: 16,
+  medInfo: {
+    flex: 1,
   },
-  interactionDetails: {
+  interactionsContainer: {
+    margin: 20,
     padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    borderRadius: 8,
-    marginBottom: 16,
+    borderRadius: 16,
   },
-  aiFeatures: {
+  interactionItem: {
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    borderLeftWidth: 4,
+  },
+  severityIndicator: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 16,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  severityLabel: {
+    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  loader: {
+    margin: 20,
+  },
+  noInteractions: {
+    alignItems: 'center',
+    padding: 24,
   },
 });

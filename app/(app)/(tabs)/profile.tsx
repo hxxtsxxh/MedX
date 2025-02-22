@@ -3,12 +3,23 @@ import { ScrollView, StyleSheet, View, Platform } from 'react-native';
 import { useTheme, Text, Avatar, Switch, List, Button, Divider } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
+import { auth } from '../../../firebaseConfig';
+import { router } from 'expo-router';
 
 export default function Profile() {
   const theme = useTheme();
   const { isDark, setTheme } = useAppTheme();
   const [notifications, setNotifications] = React.useState(true);
   const [dataSharing, setDataSharing] = React.useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -103,7 +114,7 @@ export default function Profile() {
         <Button
           mode="contained-tonal"
           icon="logout"
-          onPress={() => {}}
+          onPress={handleSignOut}
           style={styles.button}
         >
           Sign Out
