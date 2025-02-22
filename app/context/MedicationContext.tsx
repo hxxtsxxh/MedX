@@ -246,42 +246,6 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     return takenMedications[date] || [];
   };
 
-  const refreshMedications = async () => {
-    if (!auth.currentUser) {
-      showMessage({
-        message: "Authentication Error",
-        description: "Please sign in to refresh medications",
-        type: "danger",
-        duration: 3000,
-      });
-      return [];
-    }
-
-    try {
-      const q = query(
-        collection(db, 'medications'),
-        where('userId', '==', auth.currentUser.uid)
-      );
-
-      const snapshot = await getDocs(q);
-      const meds = snapshot.docs.map(doc => ({
-        ...doc.data() as Medication,
-        id: doc.id,
-      }));
-      setMedications(meds);
-      return meds;
-    } catch (error) {
-      console.error('Error refreshing medications:', error);
-      showMessage({
-        message: "Error Refreshing Medications",
-        description: "Please try again",
-        type: "danger",
-        duration: 3000,
-      });
-      return [];
-    }
-  };
-
   return (
     <MedicationContext.Provider value={{ 
       medications, 
