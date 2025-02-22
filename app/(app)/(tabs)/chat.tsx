@@ -229,6 +229,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatContainer: {
+    paddingTop: 120,
     flex: 1,
     padding: 16,
   },

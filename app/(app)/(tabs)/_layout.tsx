@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Tabs } from 'expo-router';
@@ -36,8 +35,13 @@ export default function TabLayout() {
           )
         ),
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',  // 70% opacity white
           height: 110,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        contentStyle: {
+          paddingTop: 110,
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
@@ -46,6 +50,7 @@ export default function TabLayout() {
         },
         tabBarActiveTintColor: theme.colors.primary,
         headerTintColor: theme.colors.onSurface,
+        headerTransparent: true,
       }}
     >
       <Tabs.Screen
@@ -88,6 +93,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          headerShown: false,  // Hide header for profile screen
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

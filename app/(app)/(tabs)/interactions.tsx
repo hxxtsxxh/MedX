@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 120,
   },
   medicationList: {
     margin: 20,
