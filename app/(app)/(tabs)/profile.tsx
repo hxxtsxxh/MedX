@@ -4,6 +4,7 @@ import { useTheme, Text, Avatar, Switch, List, Button, Divider } from 'react-nat
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
+import { auth } from '../../../firebaseConfig';
 
 export default function Profile() {
   const theme = useTheme();
@@ -48,16 +49,18 @@ export default function Profile() {
             source={
               profileImage
                 ? { uri: profileImage }
-                : require('../../../assets/default-avatar.webp')
+                : require('../../../assets/images/default-avatar.webp')
             }
           />
           <View style={styles.editIconContainer}>
             <Text style={styles.editIcon}>📷</Text>
           </View>
         </Pressable>
-        <Text variant="headlineMedium" style={styles.name}>John Doe</Text>
+        <Text variant="headlineMedium" style={styles.name}>
+          {auth.currentUser?.displayName || 'Guest User'}
+        </Text>
         <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-          john.doe@example.com
+          {auth.currentUser?.email || 'No email available'}
         </Text>
       </MotiView>
 
