@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["tel", "telprompt"]
+        "LSApplicationQueriesSchemes": ["tel", "telprompt"],
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "web": {
@@ -22,13 +23,27 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"],
+          "defaultChannel": "medications",
+          "enableBackgroundRemoteNotifications": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
     "android": {
-      "permissions": ["CALL_PHONE"]
+      "permissions": [
+        "CALL_PHONE",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     }
   }
 }
