@@ -11,6 +11,10 @@ interface MedicationContextType {
   removeMedication: (id: string) => Promise<void>;
   updateMedication: (id: string, medication: Medication) => Promise<void>;
   loading: boolean;
+  takenMedications: Record<string, string[]>; // date -> medication IDs
+  takeMedication: (medicationId: string) => void;
+  untakeMedication: (medicationId: string) => void;
+  getTakenMedications: (date?: string) => string[];
 }
 
 const MedicationContext = createContext<MedicationContextType>({
@@ -19,6 +23,10 @@ const MedicationContext = createContext<MedicationContextType>({
   removeMedication: async () => {},
   updateMedication: async () => {},
   loading: false,
+  takenMedications: {},
+  takeMedication: () => {},
+  untakeMedication: () => {},
+  getTakenMedications: () => [],
 });
 
 export const useMedications = () => useContext(MedicationContext);
@@ -26,6 +34,9 @@ export const useMedications = () => useContext(MedicationContext);
 export function MedicationProvider({ children }: { children: React.ReactNode }) {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [takenMedications, setTakenMedications] = useState<Record<string, string[]>>({});
+
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -185,6 +196,30 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const takeMedication = (medicationId: string) => {
+    setTakenMedications(prev => {
+      const todaysTaken = prev[today] || [];
+      return {
+        ...prev,
+        [today]: [...new Set([...todaysTaken, medicationId])]
+      };
+    });
+  };
+
+  const untakeMedication = (medicationId: string) => {
+    setTakenMedications(prev => {
+      const todaysTaken = prev[today] || [];
+      return {
+        ...prev,
+        [today]: todaysTaken.filter(id => id !== medicationId)
+      };
+    });
+  };
+
+  const getTakenMedications = (date: string = today) => {
+    return takenMedications[date] || [];
+  };
+
   return (
     <MedicationContext.Provider value={{
       medications,
@@ -192,6 +227,10 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
       removeMedication,
       updateMedication,
       loading,
+      takenMedications,
+      takeMedication,
+      untakeMedication,
+      getTakenMedications,
     }}>
       {children}
     </MedicationContext.Provider>

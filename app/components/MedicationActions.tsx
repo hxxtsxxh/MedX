@@ -7,13 +7,15 @@ import { MedicationEditModal } from './MedicationEditModal';
 
 interface MedicationActionsProps {
   medication: Medication;
+  showTakeAction?: boolean;
 }
 
-export const MedicationActions = ({ medication }: MedicationActionsProps) => {
+export const MedicationActions = ({ medication, showTakeAction = true }: MedicationActionsProps) => {
   const theme = useTheme();
-  const { removeMedication } = useMedications();
+  const { removeMedication, takeMedication, untakeMedication, getTakenMedications } = useMedications();
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const isTaken = getTakenMedications().includes(medication.id);
 
   const handleDelete = async () => {
     try {
@@ -26,7 +28,27 @@ export const MedicationActions = ({ medication }: MedicationActionsProps) => {
 
   return (
     <>
-      <View style={styles.actions}>
+      <View style={styles.container}>
+        {showTakeAction && (
+          <IconButton
+            icon={isTaken ? "undo" : "check"}
+            iconColor={isTaken ? theme.colors.error : theme.colors.primary}
+            size={20}
+            onPress={() => {
+              if (isTaken) {
+                untakeMedication(medication.id);
+              } else {
+                takeMedication(medication.id);
+              }
+            }}
+          />
+        )}
+        <IconButton
+          icon="information"
+          iconColor={theme.colors.primary}
+          size={20}
+          onPress={() => {/* Show medication details */}}
+        />
         <IconButton
           icon="pencil"
           size={20}
@@ -73,7 +95,7 @@ export const MedicationActions = ({ medication }: MedicationActionsProps) => {
 };
 
 const styles = StyleSheet.create({
-  actions: {
+  container: {
     flexDirection: 'row',
     alignItems: 'center',
   },
