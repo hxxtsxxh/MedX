@@ -9,7 +9,6 @@ import { getAuth, signOut, updateProfile, updateEmail, updatePassword, EmailAuth
 import { auth } from '../../../firebaseConfig';
 import { TextInput } from 'react-native-paper';
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -87,7 +86,6 @@ export default function Profile() {
   }, []);
 
   const pickImage = async () => {
-    // Request permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
@@ -96,7 +94,6 @@ export default function Profile() {
     }
 
     try {
-      // Pick the image
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -108,7 +105,6 @@ export default function Profile() {
         const imageUri = result.assets[0].uri;
         setProfileImage(imageUri);
         
-        // Update Firebase user profile if logged in
         if (auth.currentUser) {
           await updateProfile(auth.currentUser, {
             photoURL: imageUri
@@ -120,7 +116,6 @@ export default function Profile() {
       alert('Failed to update profile picture');
     }
   };
-
 
   const handleUpdatePassword = async () => {
     try {
@@ -156,21 +151,31 @@ export default function Profile() {
   };
 
   return (
-
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 600 }}
+        transition={{ duration: 600 }}
         style={styles.header}
       >
-        <Avatar.Image
-          size={80}
-          source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop' }}
-        />
-        <Text variant="headlineMedium" style={styles.name}>John Doe</Text>
+        <Pressable onPress={pickImage}>
+          <Avatar.Image
+            size={120}
+            source={
+              profileImage
+                ? { uri: profileImage }
+                : require('../../../assets/images/default-avatar.webp')
+            }
+          />
+          <View style={styles.editIconContainer}>
+            <Text style={styles.editIcon}>📷</Text>
+          </View>
+        </Pressable>
+        <Text variant="headlineMedium" style={styles.name}>
+          {auth.currentUser?.displayName || 'Guest User'}
+        </Text>
         <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-          john.doe@example.com
+          {auth.currentUser?.email || 'No email available'}
         </Text>
       </MotiView>
 
@@ -229,7 +234,7 @@ export default function Profile() {
         <List.Item
           title="Personal Information"
           left={props => <List.Icon {...props} icon="account" />}
-          onPress={() => {}}
+          onPress={() => setBottomSheetVisible(true)}
         />
 
         <List.Item
@@ -254,118 +259,7 @@ export default function Profile() {
         >
           Sign Out
         </Button>
-
-      <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <MotiView
-          from={{ opacity: 0, translateY: 20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ duration: 600 }}
-          style={styles.header}
-
-        >
-          <Pressable onPress={pickImage}>
-            <Avatar.Image
-              size={120}
-              source={
-                profileImage
-                  ? { uri: profileImage }
-                  : require('../../../assets/images/default-avatar.webp')
-              }
-            />
-            <View style={styles.editIconContainer}>
-              <Text style={styles.editIcon}>📷</Text>
-            </View>
-          </Pressable>
-          <Text variant="headlineMedium" style={styles.name}>
-            {auth.currentUser?.displayName || 'Guest User'}
-          </Text>
-          <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-            {auth.currentUser?.email || 'No email available'}
-          </Text>
-        </MotiView>
-
-        <List.Section>
-          <List.Subheader>Preferences</List.Subheader>
-          
-          <List.Item
-            title="Dark Mode"
-            left={props => <List.Icon {...props} icon="theme-light-dark" />}
-            right={() => (
-              <Switch
-                value={isDark}
-                onValueChange={() => setTheme(isDark ? 'light' : 'dark')}
-              />
-            )}
-          />
-          
-          <List.Item
-            title="Notifications"
-            left={props => <List.Icon {...props} icon="bell" />}
-            right={() => (
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-              />
-            )}
-          />
-
-          <Divider />
-
-          <List.Subheader>Health Data</List.Subheader>
-          
-          <List.Item
-            title="Connected Services"
-            description="Manage your connected health services"
-            left={props => <List.Icon {...props} icon="link" />}
-            onPress={() => {}}
-          />
-
-          <List.Item
-            title="Data Sharing"
-            description="Share anonymized data for research"
-            left={props => <List.Icon {...props} icon="database" />}
-            right={() => (
-              <Switch
-                value={dataSharing}
-                onValueChange={setDataSharing}
-              />
-            )}
-          />
-
-          <Divider />
-
-          <List.Subheader>Account</List.Subheader>
-
-          <List.Item
-            title="Personal Information"
-            left={props => <List.Icon {...props} icon="account" />}
-            onPress={() => setBottomSheetVisible(true)}
-          />
-
-          <List.Item
-            title="Privacy Settings"
-            left={props => <List.Icon {...props} icon="shield" />}
-            onPress={() => {}}
-          />
-
-          <List.Item
-            title="Export Data"
-            left={props => <List.Icon {...props} icon="download" />}
-            onPress={() => {}}
-          />
-        </List.Section>
-
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained-tonal"
-            icon="logout"
-            onPress={handleSignOut}
-            style={styles.button}
-          >
-            Sign Out
-          </Button>
-        </View>
-      </ScrollView>
+      </View>
 
       <Portal>
         <Modal
@@ -417,7 +311,6 @@ export default function Profile() {
           </Button>
         </Modal>
 
-        {/* Separate Modal for Password Change */}
         <Modal
           visible={passwordModalVisible}
           onDismiss={() => setPasswordModalVisible(false)}
