@@ -3,7 +3,12 @@ import { ScrollView, StyleSheet, View, Platform, Pressable } from 'react-native'
 import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
-import * as ImagePicker from 'expo-image-picker';
+import { 
+  MediaTypeOptions, 
+  launchImageLibraryAsync, 
+  requestMediaLibraryPermissionsAsync,
+  MediaType 
+} from 'expo-image-picker';
 import { router } from 'expo-router';
 import { getAuth, signOut, updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../../../firebaseConfig';
@@ -86,7 +91,7 @@ export default function Profile() {
   }, []);
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
       alert('Sorry, we need camera roll permissions to update your profile picture.');
@@ -94,8 +99,8 @@ export default function Profile() {
     }
 
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      const result = await launchImageLibraryAsync({
+        mediaTypes: MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
