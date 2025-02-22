@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
-import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal } from 'react-native-paper';
+import { ScrollView, StyleSheet, View, ActivityIndicator, Platform, Pressable } from 'react-native';
+import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal, Chip, IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,14 +9,209 @@ import { format } from 'date-fns';
 import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
 import { auth } from '../../../firebaseConfig';
 import { MedicationActions } from '../../components/MedicationActions';
-import { useTheme as useAppTheme } from '../../context/ThemeContext';
+import type { Medication } from '../api/medications';
+import axios from 'axios';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
+
+type GeminiResponse = {
+  candidates: Array<{
+    content: {
+      parts: Array<{
+        text: string;
+      }>;
+    };
+  }>;
+};
+
+const createStyles = (theme: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    padding: 20,
+    paddingTop: 120,
+  },
+  searchContainer: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  searchBar: {
+    elevation: 2,
+  },
+  section: {
+    margin: 20,
+    marginTop: 0,
+  },
+  medicationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginVertical: 6,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    gap: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  medicationInfo: {
+    flex: 1,
+  },
+  medicationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  medicationName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.onSurface,
+  },
+  medicationDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timeText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+  },
+  dosageText: {
+    fontSize: 14,
+    color: theme.colors.onSurfaceVariant,
+  },
+  divider: {
+    fontSize: 14,
+    color: theme.colors.onSurfaceVariant,
+  },
+  scheduleText: {
+    fontSize: 12,
+    color: theme.colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  takenBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginLeft: 8,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  modalContainer: {
+    margin: 20,
+    padding: 20,
+    borderRadius: 12,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    marginBottom: 20,
+  },
+  historyItem: {
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+  },
+  modalButton: {
+    marginTop: 20,
+  },
+  sectionContainer: {
+    margin: 20,
+  },
+  sectionTitle: {
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  recentMedsContainer: undefined,
+  recentMedCard: undefined,
+  recentMedIcon: undefined,
+  medInitial: undefined,
+  recentMedName: undefined,
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    padding: 8,
+  },
+  actionCard: {
+    flex: 1,
+    minWidth: '45%',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionText: {
+    textAlign: 'center',
+  },
+  overviewContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  overviewCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  editActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});
+
+function getFirstName(fullName: string | null): string {
+  if (!fullName) return 'Guest';
+  return fullName.split(' ')[0];
+}
 
 export default function Home() {
   const theme = useTheme();
-  const { isDark } = useAppTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [searchQuery, setSearchQuery] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
-  const { medications, loading } = useMedications();
+  const { medications, loading, getTakenMedications } = useMedications();
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const groupMedicationsByTime = (medications: Medication[]) => {
     const now = new Date();
@@ -88,6 +283,295 @@ export default function Home() {
     { date: '2024-02-18', medications: ['Aspirin', 'Omega-3'] },
   ];
 
+  const renderDailyOverview = () => {
+    const totalMeds = groupedMedications.morning.length;
+    const takenMeds = getTakenMedications().reduce((count, takenId) => {
+      return groupedMedications.morning.some(med => med.id === takenId) ? count + 1 : count;
+    }, 0);
+    
+    return (
+      <View style={styles.sectionContainer}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Daily Overview</Text>
+        <View style={styles.overviewContainer}>
+          <View style={[styles.overviewCard, { backgroundColor: theme.colors.primaryContainer }]}>
+            <Ionicons name="calendar" size={24} color={theme.colors.primary} />
+            <Text variant="titleLarge" style={{ color: theme.colors.primary }}>
+              {totalMeds}
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onPrimaryContainer }}>
+              Medications Today
+            </Text>
+          </View>
+
+          <View style={[styles.overviewCard, { backgroundColor: theme.colors.secondaryContainer }]}>
+            <Ionicons name="checkmark-circle" size={24} color={theme.colors.secondary} />
+            <Text variant="titleLarge" style={{ color: theme.colors.secondary }}>
+              {takenMeds}/{totalMeds}
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSecondaryContainer }}>
+              Taken
+            </Text>
+          </View>
+
+          <View style={[styles.overviewCard, { backgroundColor: theme.colors.tertiaryContainer }]}>
+            <Ionicons name="time" size={24} color={theme.colors.tertiary} />
+            <Text variant="titleLarge" style={{ color: theme.colors.tertiary }}>
+              {totalMeds - takenMeds}
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onTertiaryContainer }}>
+              Remaining
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderQuickActions = () => (
+    <View style={styles.sectionContainer}>
+      <Text variant="titleMedium" style={styles.sectionTitle}>Quick Actions</Text>
+      <View style={styles.quickActionsGrid}>
+        <Pressable
+          onPress={() => router.push('/(app)/(tabs)/scan')}
+          style={({ pressed }) => [
+            styles.actionCard,
+            { 
+              backgroundColor: theme.colors.primaryContainer,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            }
+          ]}
+        >
+          <Ionicons name="add-circle-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Add Medication</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleExportData}
+          style={({ pressed }) => [
+            styles.actionCard,
+            { 
+              backgroundColor: theme.colors.secondaryContainer,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            }
+          ]}
+        >
+          <Ionicons name="document-text-outline" size={24} color={theme.colors.secondary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Export Report</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {/* Handle reminder settings */}}
+          style={({ pressed }) => [
+            styles.actionCard,
+            { 
+              backgroundColor: theme.colors.tertiaryContainer,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            }
+          ]}
+        >
+          <Ionicons name="notifications-outline" size={24} color={theme.colors.tertiary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Reminder Settings</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {/* Handle sharing */}}
+          style={({ pressed }) => [
+            styles.actionCard,
+            { 
+              backgroundColor: theme.colors.surfaceVariant,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            }
+          ]}
+        >
+          <Ionicons name="share-social-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Share With Doctor</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const generateMedicationReport = async (medications: Medication[]): Promise<string> => {
+    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
+    const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+
+    try {
+      const medicationInfo = medications.map(med => ({
+        name: med.brand_name,
+        genericName: med.generic_name,
+        dosage: med.schedule?.dosage,
+        timing: med.schedule?.times.map(displayTime).join(', '),
+        frequency: med.schedule?.frequency,
+        days: med.schedule?.frequency === 'daily' ? 'Daily' :
+              med.schedule?.frequency === 'weekly' ? 
+                med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') :
+                `Monthly on days: ${med.schedule?.days.join(', ')}`,
+        adherence: getTakenMedications().includes(med.id) ? 'Taken today' : 'Not taken today'
+      }));
+
+      const prompt = `Create a concise medication report with these sections:
+
+1. MEDICATION REGIMEN OVERVIEW
+A brief, one-paragraph summary of the overall medication schedule.
+
+2. DETAILED MEDICATION INFORMATION
+For each medication, list:
+• Brand name in CAPS (generic name)
+• Dosage: [amount]
+• Schedule: [time and frequency]
+• Status: [adherence]
+
+3. ADHERENCE SUMMARY
+A brief statement about medication adherence.
+
+4. RECOMMENDATIONS
+3-4 bullet points for optimal medication management.
+
+Keep sections clearly separated with single line breaks. Use minimal formatting.
+
+Data:
+${JSON.stringify(medicationInfo, null, 2)}`;
+
+      const response = await axios.post<GeminiResponse>(
+        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        }
+      );
+
+      // Process the response to ensure proper formatting
+      const content = response.data.candidates[0].content.parts[0].text
+        .replace(/```/g, '') // Remove any markdown code blocks
+        .replace(/\n\n+/g, '\n\n') // Reduce multiple line breaks to double
+        .trim();
+
+      return content;
+    } catch (error) {
+      console.error('Error generating report with Gemini:', error);
+      throw new Error('Failed to generate medication report');
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      setIsGeneratingReport(true);
+      const reportContent = await generateMedicationReport(medications);
+
+      const date = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.4;
+        color: #333;
+        padding: 20px;
+        margin: 0;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #0D47A1;
+        padding-bottom: 15px;
+      }
+      .title {
+        color: #0D47A1;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      .subtitle {
+        color: #666;
+        font-size: 14px;
+        margin: 2px 0;
+      }
+      .section {
+        margin: 15px 0;
+      }
+      .section-title {
+        color: #1976D2;
+        font-size: 16px;
+        font-weight: bold;
+        margin: 15px 0 8px 0;
+        border-bottom: 1px solid #1976D2;
+        padding-bottom: 3px;
+      }
+      .content {
+        margin: 8px 0;
+        font-size: 14px;
+      }
+      ul {
+        margin: 5px 0;
+        padding-left: 20px;
+      }
+      li {
+        margin: 3px 0;
+      }
+      p {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="title">MEDICATION MANAGEMENT REPORT</div>
+      <div class="subtitle">Generated: ${date}</div>
+      <div class="subtitle">Patient: ${auth.currentUser?.displayName || 'Not specified'}</div>
+    </div>
+    ${reportContent
+      .split('\n\n')
+      .map(section => {
+        if (section.includes(':')) {
+          const [title, ...content] = section.split('\n');
+          return `
+            <div class="section">
+              <div class="section-title">${title.trim()}</div>
+              <div class="content">
+                ${content.join('<br>')}
+              </div>
+            </div>`;
+        }
+        return `<div class="content">${section}</div>`;
+      })
+      .join('')}
+  </body>
+</html>`;
+
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Export Medication Report',
+          UTI: 'com.adobe.pdf'
+        });
+      } else {
+        alert('Sharing is not available on your platform');
+      }
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      alert('Failed to export report. Please try again.');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView>
@@ -100,10 +584,10 @@ export default function Home() {
           <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
             Welcome back,{' '}
             <Text style={{ 
-              color: isDark ? theme.colors.primary : theme.colors.primaryContainer,
-              fontWeight: '600' 
+              color: theme.colors.primary,
+              fontWeight: 'bold' 
             }}>
-              {auth.currentUser?.displayName?.split(' ')[0]}
+              {getFirstName(auth.currentUser?.displayName)}
             </Text>
             !
           </Text>
@@ -112,14 +596,7 @@ export default function Home() {
           </Text>
         </MotiView>
 
-        <View style={styles.searchContainer}>
-          <Searchbar
-            placeholder="Search medications..."
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchBar}
-          />
-        </View>
+        {renderDailyOverview()}
 
         <Card style={[styles.section, {
           elevation: 0,
@@ -154,49 +631,44 @@ export default function Home() {
                   from={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ type: 'timing', duration: 300, delay: index * 100 }}
-                  style={[styles.medicationItem, {
-                    elevation: 0,
-                    backgroundColor: 'transparent',
-                  }]}
+                  style={[
+                    styles.medicationItem,
+                    getTakenMedications().includes(med.id) && {
+                      opacity: 0.7,
+                      backgroundColor: theme.colors.surfaceVariant,
+                    }
+                  ]}
                 >
-                  <View style={[styles.medicationInfo, {
-                    elevation: 0,
-                    backgroundColor: 'transparent',
-                  }]}>
-                    <Text variant="titleMedium" style={{
-                      fontWeight: '500',
-                      color: theme.colors.onSurface,
-                      includeFontPadding: false,
-                      textAlign: 'left',
-                      letterSpacing: 0,
-                    }}>{med.brand_name}</Text>
-                    <Text variant="bodyMedium" style={{
-                      color: theme.colors.onSurfaceVariant,
-                      includeFontPadding: false,
-                      textAlign: 'left',
-                      letterSpacing: 0,
-                    }}>
-                      {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
-                    </Text>
+                  <View style={styles.medicationInfo}>
+                    <Text style={styles.medicationName}>{med.brand_name}</Text>
+                    <View style={styles.medicationDetails}>
+                      <Text style={styles.timeText}>
+                        {med.schedule?.times.map(displayTime).join(', ')}
+                      </Text>
+                      <Text style={styles.divider}>•</Text>
+                      <Text style={styles.dosageText}>
+                        {med.schedule?.dosage}
+                      </Text>
+                    </View>
                     {med.schedule?.frequency !== 'daily' && (
-                      <Text variant="bodySmall" style={{
-                        color: theme.colors.primary,
-                        includeFontPadding: false,
-                        textAlign: 'left',
-                        letterSpacing: 0,
-                      }}>
+                      <Text style={styles.scheduleText}>
                         {med.schedule?.frequency === 'weekly' 
                           ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
                           : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
                       </Text>
                     )}
                   </View>
-                  <Text variant="bodySmall" style={{
-                    includeFontPadding: false,
-                    textAlign: 'right',
-                    letterSpacing: 0,
-                  }}>Today</Text>
-                  <MedicationActions medication={med} />
+
+                  <View style={styles.actionsContainer}>
+                    <MedicationActions medication={med} showTakeAction={true} />
+                    {getTakenMedications().includes(med.id) && (
+                      <View style={styles.takenBadge}>
+                        <Text style={{ color: theme.colors.onPrimary, fontSize: 12 }}>
+                          Taken
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </MotiView>
               ))
             ) : (
@@ -235,31 +707,39 @@ export default function Home() {
                     from={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                    style={styles.medicationItem}
+                    style={[
+                      styles.medicationItem,
+                      { backgroundColor: theme.colors.surfaceVariant + '10' }
+                    ]}
                   >
                     <View style={styles.medicationInfo}>
-                      <Text variant="titleMedium">{med.brand_name}</Text>
-                      <Text variant="bodyMedium">
-                        {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
-                      </Text>
-                      <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
+                      <Text style={styles.medicationName}>{med.brand_name}</Text>
+                      <View style={styles.medicationDetails}>
+                        <Text style={styles.timeText}>
+                          {med.schedule?.times.map(displayTime).join(', ')}
+                        </Text>
+                        <Text style={styles.divider}>•</Text>
+                        <Text style={styles.dosageText}>
+                          {med.schedule?.dosage}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.scheduleText}>
                         {med.schedule?.frequency === 'weekly' 
                           ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
                           : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
                       </Text>
+                      
                       <Text 
-                        variant="bodySmall" 
-                        style={{ 
-                          color: theme.colors.secondary,
-                          fontWeight: '500',
-                          marginTop: 2
-                        }}
+                        style={[styles.scheduleText, { color: theme.colors.secondary }]}
                       >
                         {formatDaysUntil(med.daysUntil)}
                       </Text>
                     </View>
-                    <Text variant="bodySmall">Upcoming</Text>
-                    <MedicationActions medication={med} />
+
+                    <View style={styles.actionsContainer}>
+                      <MedicationActions medication={med} showTakeAction={false} />
+                    </View>
                   </MotiView>
                 ))
             ) : (
@@ -268,47 +748,7 @@ export default function Home() {
           </Card.Content>
         </Card>
 
-        <Card style={[styles.section, {
-          elevation: 0,
-          backgroundColor: theme.colors.surface,
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: 1,
-          },
-          shadowOpacity: 0.18,
-          shadowRadius: 1.0,
-          borderWidth: Platform.OS === 'android' ? 1 : 0,
-          borderColor: 'rgba(0, 0, 0, 0.1)',
-        }]}>
-          <Card.Title title="Quick Actions" />
-          <Card.Content style={styles.quickActions}>
-            <Button
-              mode="contained-tonal"
-              icon="camera"
-              onPress={() => router.push('/scan')}
-              style={styles.actionButton}
-            >
-              Scan Medicine
-            </Button>
-            <Button
-              mode="contained-tonal"
-              icon="pill"
-              onPress={() => router.push('/scan')}
-              style={styles.actionButton}
-            >
-              Add Medication
-            </Button>
-            <Button
-              mode="contained-tonal"
-              icon="chart-timeline-variant"
-              onPress={() => setHistoryVisible(true)}
-              style={styles.actionButton}
-            >
-              View History
-            </Button>
-          </Card.Content>
-        </Card>
+        {renderQuickActions()}
       </ScrollView>
 
       <Portal>
@@ -345,79 +785,23 @@ export default function Home() {
         </Modal>
       </Portal>
 
-      <FAB
-        icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => router.push('/scan')}
-        color="white"
-      />
+      <Portal>
+        <Modal
+          visible={isGeneratingReport}
+          dismissable={false}
+          contentContainerStyle={{
+            backgroundColor: theme.colors.surface,
+            padding: 24,
+            margin: 20,
+            borderRadius: 12,
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="bodyLarge">Generating your report...</Text>
+        </Modal>
+      </Portal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 20,
-    paddingTop: 120,
-  },
-  searchContainer: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  searchBar: {
-    elevation: 2,
-  },
-  section: {
-    margin: 20,
-    marginTop: 0,
-  },
-  medicationItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-    backgroundColor: 'transparent',
-  },
-  medicationInfo: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    minWidth: '45%',
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-  },
-  modalContainer: {
-    margin: 20,
-    padding: 20,
-    borderRadius: 12,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    marginBottom: 20,
-  },
-  historyItem: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 8,
-  },
-  modalButton: {
-    marginTop: 20,
-  },
-});

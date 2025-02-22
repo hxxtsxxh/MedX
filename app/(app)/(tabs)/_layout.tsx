@@ -23,7 +23,7 @@ export default function TabLayout() {
                 size={48}
                 style={{ 
                   marginLeft: 16,
-                  marginTop: 8 // Add some top margin
+                  marginTop: 8
                 }}
                 source={
                   (auth.currentUser as User)?.photoURL
@@ -35,8 +35,10 @@ export default function TabLayout() {
           )
         ),
         headerStyle: {
-          backgroundColor: 'rgba(255, 255, 255, 0.7)',  // 70% opacity white
-          height: 110,
+          backgroundColor: theme.dark 
+            ? 'rgba(18, 18, 18, 0.7)'  // Dark semi-transparent
+            : 'rgba(255, 255, 255, 0.7)',  // Light semi-transparent
+          height: pathname === '/profile' ? 110 : 120,
           elevation: 0,
           shadowOpacity: 0,
         },
