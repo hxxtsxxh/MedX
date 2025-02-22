@@ -1,14 +1,71 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useMedications } from '../../context/MedicationContext';
+import { format } from 'date-fns';
+import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
 
 export default function Home() {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
+  const { medications, loading } = useMedications();
+
+  const groupMedicationsByTime = (medications: Medication[]) => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const currentDate = now.getDate();
+    
+    return medications.reduce((groups, med) => {
+      if (!med.schedule) return groups;
+
+      const { times, days, frequency } = med.schedule;
+      
+      // Check if medication should be taken today
+      const shouldTakeToday = 
+        frequency === 'daily' || 
+        (frequency === 'weekly' && days.includes(currentDay.toLowerCase())) ||
+        (frequency === 'monthly' && days.includes(currentDate.toString()));
+
+      times.forEach(time => {
+        const [hours] = time.split(':').map(Number);
+
+        if (shouldTakeToday) {
+          // Today's medications go to Today's Schedule
+          if (hours < 12) {
+            groups.morning.push(med);
+          } else if (hours < 17) {
+            groups.morning.push(med); // Add to morning section if it's for today
+          } else {
+            groups.morning.push(med); // Add to morning section if it's for today
+          }
+        } else {
+          // Only add to upcoming if it's not for today
+          const daysUntilNext = getNextDoseDay(days, frequency);
+          if (daysUntilNext > 0) {
+            const existingMed = groups.upcoming.find(m => m.id === med.id);
+            if (!existingMed) {
+              groups.upcoming.push({
+                ...med,
+                daysUntil: daysUntilNext
+              });
+            }
+          }
+        }
+      });
+      
+      return groups;
+    }, { 
+      morning: [] as Medication[], 
+      upcoming: [] as (Medication & { daysUntil: number })[]
+    });
+  };
+
+  const groupedMedications = groupMedicationsByTime(medications);
 
   const recentMedications = [
     { name: 'Aspirin', dosage: '81mg', time: '8:00 AM' },
@@ -56,42 +113,82 @@ export default function Home() {
         <Card style={styles.section}>
           <Card.Title title="Today's Schedule" />
           <Card.Content>
-            {recentMedications.map((med, index) => (
-              <MotiView
-                key={index}
-                from={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                style={styles.medicationItem}
-              >
-                <View style={styles.medicationInfo}>
-                  <Text variant="titleMedium">{med.name}</Text>
-                  <Text variant="bodyMedium">{med.dosage}</Text>
-                </View>
-                <Text variant="bodySmall">{med.time}</Text>
-              </MotiView>
-            ))}
+            {loading ? (
+              <ActivityIndicator />
+            ) : groupedMedications.morning.length > 0 ? (
+              groupedMedications.morning.map((med, index) => (
+                <MotiView
+                  key={med.id}
+                  from={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'timing', duration: 600, delay: index * 100 }}
+                  style={styles.medicationItem}
+                >
+                  <View style={styles.medicationInfo}>
+                    <Text variant="titleMedium">{med.brand_name}</Text>
+                    <Text variant="bodyMedium">
+                      {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
+                    </Text>
+                    {med.schedule?.frequency !== 'daily' && (
+                      <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
+                        {med.schedule?.frequency === 'weekly' 
+                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                      </Text>
+                    )}
+                  </View>
+                  <Text variant="bodySmall">Today</Text>
+                </MotiView>
+              ))
+            ) : (
+              <Text variant="bodyMedium">No medications scheduled for today</Text>
+            )}
           </Card.Content>
         </Card>
 
         <Card style={styles.section}>
           <Card.Title title="Upcoming Doses" />
           <Card.Content>
-            {upcomingDoses.map((med, index) => (
-              <MotiView
-                key={index}
-                from={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                style={styles.medicationItem}
-              >
-                <View style={styles.medicationInfo}>
-                  <Text variant="titleMedium">{med.name}</Text>
-                  <Text variant="bodyMedium">{med.dosage}</Text>
-                </View>
-                <Text variant="bodySmall">{med.time}</Text>
-              </MotiView>
-            ))}
+            {loading ? (
+              <ActivityIndicator />
+            ) : groupedMedications.upcoming.length > 0 ? (
+              groupedMedications.upcoming
+                .sort((a, b) => a.daysUntil - b.daysUntil)
+                .map((med, index) => (
+                  <MotiView
+                    key={`${med.id}-upcoming`}
+                    from={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'timing', duration: 600, delay: index * 100 }}
+                    style={styles.medicationItem}
+                  >
+                    <View style={styles.medicationInfo}>
+                      <Text variant="titleMedium">{med.brand_name}</Text>
+                      <Text variant="bodyMedium">
+                        {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
+                        {med.schedule?.frequency === 'weekly' 
+                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                      </Text>
+                      <Text 
+                        variant="bodySmall" 
+                        style={{ 
+                          color: theme.colors.secondary,
+                          fontWeight: '500',
+                          marginTop: 2
+                        }}
+                      >
+                        {formatDaysUntil(med.daysUntil)}
+                      </Text>
+                    </View>
+                    <Text variant="bodySmall">Upcoming</Text>
+                  </MotiView>
+                ))
+            ) : (
+              <Text variant="bodyMedium">No upcoming doses</Text>
+            )}
           </Card.Content>
         </Card>
 
