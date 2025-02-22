@@ -8,6 +8,7 @@ import { useMedications } from '../../context/MedicationContext';
 import { format } from 'date-fns';
 import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
 import { auth } from '../../../firebaseConfig';
+import { MedicationActions } from '../../components/MedicationActions';
 
 export default function Home() {
   const theme = useTheme();
@@ -190,6 +191,7 @@ export default function Home() {
                     textAlign: 'right',
                     letterSpacing: 0,
                   }}>Today</Text>
+                  <MedicationActions medication={med} />
                 </MotiView>
               ))
             ) : (
@@ -252,6 +254,7 @@ export default function Home() {
                       </Text>
                     </View>
                     <Text variant="bodySmall">Upcoming</Text>
+                    <MedicationActions medication={med} />
                   </MotiView>
                 ))
             ) : (

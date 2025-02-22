@@ -440,4 +440,3 @@ Patient: ${auth.currentUser?.displayName || 'Not specified'}
     </ScrollView>
   );
 }
-
