@@ -1,34 +1,27 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Medication } from '../(app)/api/medications';
 import { auth, db } from '../../firebaseConfig';
-import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { showMessage } from 'react-native-flash-message';
 import { MotiView } from 'moti';
 
 interface MedicationContextType {
   medications: Medication[];
-  loading: boolean;
-  addMedication: (medication: Medication) => Promise<void>;
+  addMedication: (medication: Medication) => Promise<string | void>;
+  removeMedication: (id: string) => Promise<void>;
   updateMedication: (id: string, medication: Medication) => Promise<void>;
-  deleteMedication: (id: string) => Promise<void>;
+  loading: boolean;
 }
 
-export const MedicationContext = createContext<MedicationContextType>({
+const MedicationContext = createContext<MedicationContextType>({
   medications: [],
-  loading: false,
   addMedication: async () => {},
+  removeMedication: async () => {},
   updateMedication: async () => {},
-  deleteMedication: async () => {},
+  loading: false,
 });
 
-// Add the custom hook
-export const useMedications = () => {
-  const context = useContext(MedicationContext);
-  if (!context) {
-    throw new Error('useMedications must be used within a MedicationProvider');
-  }
-  return context;
-};
+export const useMedications = () => useContext(MedicationContext);
 
 export function MedicationProvider({ children }: { children: React.ReactNode }) {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -122,43 +115,82 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const updateMedication = async (id: string, updatedMedication: Medication) => {
-    setLoading(true);
+  const removeMedication = async (id: string) => {
+    if (!auth.currentUser) {
+      showMessage({
+        message: "Authentication Error",
+        description: "Please sign in to remove medications",
+        type: "danger",
+        duration: 3000,
+      });
+      return;
+    }
+
     try {
-      // Update in local state
-      setMedications(prev => 
-        prev.map(med => med.id === id ? updatedMedication : med)
-      );
-      // Here you would typically update in your backend/database
+      const medicationRef = doc(db, 'medications', id);
+      await deleteDoc(medicationRef);
+      
+      showMessage({
+        message: "Medication Removed",
+        description: "The medication has been removed from your list",
+        type: "success",
+        duration: 3000,
+      });
     } catch (error) {
-      console.error('Error updating medication:', error);
+      console.error('Error removing medication:', error);
+      showMessage({
+        message: "Error Removing Medication",
+        description: "Please try again",
+        type: "danger",
+        duration: 3000,
+      });
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
-  const deleteMedication = async (id: string) => {
-    setLoading(true);
+  const updateMedication = async (id: string, medication: Medication) => {
+    if (!auth.currentUser) {
+      showMessage({
+        message: "Authentication Error",
+        description: "Please sign in to update medications",
+        type: "danger",
+        duration: 3000,
+      });
+      return;
+    }
+
     try {
-      // Remove from local state
-      setMedications(prev => prev.filter(med => med.id !== id));
-      // Here you would typically delete from your backend/database
+      const medicationRef = doc(db, 'medications', id);
+      await updateDoc(medicationRef, {
+        ...medication,
+        updated_at: new Date().toISOString(),
+      });
+      
+      showMessage({
+        message: "Medication Updated",
+        description: `${medication.brand_name} has been updated`,
+        type: "success",
+        duration: 3000,
+      });
     } catch (error) {
-      console.error('Error deleting medication:', error);
+      console.error('Error updating medication:', error);
+      showMessage({
+        message: "Error Updating Medication",
+        description: "Please try again",
+        type: "danger",
+        duration: 3000,
+      });
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <MedicationContext.Provider value={{
-      medications,
-      loading,
-      addMedication,
-      updateMedication,
-      deleteMedication,
+    <MedicationContext.Provider value={{ 
+      medications, 
+      addMedication, 
+      removeMedication, 
+      updateMedication, 
+      loading 
     }}>
       {children}
     </MedicationContext.Provider>
