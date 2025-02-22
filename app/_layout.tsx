@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { lightTheme, darkTheme } from './constants/theme';
+import React from 'react';
 
 declare global {
   var user: {
