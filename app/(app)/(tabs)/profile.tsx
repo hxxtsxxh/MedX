@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useMedications } from '../../context/MedicationContext';
 import { formatDosage, displayTime } from '../../utils/formatters';
+import { Stack } from 'expo-router';
 
 const styles = StyleSheet.create({
   container: {
@@ -25,7 +26,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 110,
   },
   name: {
     marginTop: 16,
@@ -112,6 +113,13 @@ export default function Profile() {
     if (auth.currentUser?.photoURL) {
       setProfileImage(auth.currentUser.photoURL);
     }
+  }, []);
+
+  React.useEffect(() => {
+    // Hide the header for this screen
+    router.setParams({
+      headerShown: 'false'
+    });
   }, []);
 
   const pickImage = async () => {
