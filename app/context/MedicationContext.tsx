@@ -7,19 +7,28 @@ import { MotiView } from 'moti';
 
 interface MedicationContextType {
   medications: Medication[];
-  addMedication: (medication: Medication) => Promise<string | void>;
-  removeMedication: (id: string) => Promise<void>;
   loading: boolean;
+  addMedication: (medication: Medication) => Promise<void>;
+  updateMedication: (id: string, medication: Medication) => Promise<void>;
+  deleteMedication: (id: string) => Promise<void>;
 }
 
-const MedicationContext = createContext<MedicationContextType>({
+export const MedicationContext = createContext<MedicationContextType>({
   medications: [],
-  addMedication: async () => {},
-  removeMedication: async () => {},
   loading: false,
+  addMedication: async () => {},
+  updateMedication: async () => {},
+  deleteMedication: async () => {},
 });
 
-export const useMedications = () => useContext(MedicationContext);
+// Add the custom hook
+export const useMedications = () => {
+  const context = useContext(MedicationContext);
+  if (!context) {
+    throw new Error('useMedications must be used within a MedicationProvider');
+  }
+  return context;
+};
 
 export function MedicationProvider({ children }: { children: React.ReactNode }) {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -113,41 +122,44 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const removeMedication = async (id: string) => {
-    if (!auth.currentUser) {
-      showMessage({
-        message: "Authentication Error",
-        description: "Please sign in to remove medications",
-        type: "danger",
-        duration: 3000,
-      });
-      return;
-    }
-
+  const updateMedication = async (id: string, updatedMedication: Medication) => {
+    setLoading(true);
     try {
-      const medicationRef = doc(db, 'medications', id);
-      await deleteDoc(medicationRef);
-      
-      showMessage({
-        message: "Medication Removed",
-        description: "The medication has been removed from your list",
-        type: "success",
-        duration: 3000,
-      });
+      // Update in local state
+      setMedications(prev => 
+        prev.map(med => med.id === id ? updatedMedication : med)
+      );
+      // Here you would typically update in your backend/database
     } catch (error) {
-      console.error('Error removing medication:', error);
-      showMessage({
-        message: "Error Removing Medication",
-        description: "Please try again",
-        type: "danger",
-        duration: 3000,
-      });
+      console.error('Error updating medication:', error);
       throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMedication = async (id: string) => {
+    setLoading(true);
+    try {
+      // Remove from local state
+      setMedications(prev => prev.filter(med => med.id !== id));
+      // Here you would typically delete from your backend/database
+    } catch (error) {
+      console.error('Error deleting medication:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <MedicationContext.Provider value={{ medications, addMedication, removeMedication, loading }}>
+    <MedicationContext.Provider value={{
+      medications,
+      loading,
+      addMedication,
+      updateMedication,
+      deleteMedication,
+    }}>
       {children}
     </MedicationContext.Provider>
   );

@@ -8,6 +8,7 @@ import { useMedications } from '../../context/MedicationContext';
 import { format } from 'date-fns';
 import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
 import { auth } from '../../../firebaseConfig';
+import { MedicationItem } from '../../components/MedicationItem';
 
 export default function Home() {
   const theme = useTheme();
@@ -121,29 +122,13 @@ export default function Home() {
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.morning.length > 0 ? (
-              groupedMedications.morning.map((med, index) => (
-                <MotiView
+              groupedMedications.morning.map((med) => (
+                <MedicationItem
                   key={med.id}
-                  from={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                  style={styles.medicationItem}
-                >
-                  <View style={styles.medicationInfo}>
-                    <Text variant="titleMedium">{med.brand_name}</Text>
-                    <Text variant="bodyMedium">
-                      {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
-                    </Text>
-                    {med.schedule?.frequency !== 'daily' && (
-                      <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
-                        {med.schedule?.frequency === 'weekly' 
-                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
-                      </Text>
-                    )}
-                  </View>
-                  <Text variant="bodySmall">Today</Text>
-                </MotiView>
+                  medication={med}
+                  showTime={true}
+                  showFrequency={true}
+                />
               ))
             ) : (
               <Text variant="bodyMedium">No medications scheduled for today</Text>
@@ -159,37 +144,13 @@ export default function Home() {
             ) : groupedMedications.upcoming.length > 0 ? (
               groupedMedications.upcoming
                 .sort((a, b) => a.daysUntil - b.daysUntil)
-                .map((med, index) => (
-                  <MotiView
-                    key={`${med.id}-upcoming`}
-                    from={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                    style={styles.medicationItem}
-                  >
-                    <View style={styles.medicationInfo}>
-                      <Text variant="titleMedium">{med.brand_name}</Text>
-                      <Text variant="bodyMedium">
-                        {med.schedule?.dosage} • {med.schedule?.times.map(displayTime).join(', ')}
-                      </Text>
-                      <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
-                        {med.schedule?.frequency === 'weekly' 
-                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
-                      </Text>
-                      <Text 
-                        variant="bodySmall" 
-                        style={{ 
-                          color: theme.colors.secondary,
-                          fontWeight: '500',
-                          marginTop: 2
-                        }}
-                      >
-                        {formatDaysUntil(med.daysUntil)}
-                      </Text>
-                    </View>
-                    <Text variant="bodySmall">Upcoming</Text>
-                  </MotiView>
+                .map((med) => (
+                  <MedicationItem
+                    key={med.id}
+                    medication={med}
+                    showTime={true}
+                    showFrequency={true}
+                  />
                 ))
             ) : (
               <Text variant="bodyMedium">No upcoming doses</Text>
