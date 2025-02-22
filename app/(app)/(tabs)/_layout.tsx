@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Tabs } from 'expo-router';
@@ -23,7 +24,7 @@ export default function TabLayout() {
                 size={48}
                 style={{ 
                   marginLeft: 16,
-                  alignSelf: 'center'  // Center vertically
+                  marginTop: 8 // Add some top margin
                 }}
                 source={
                   (auth.currentUser as User)?.photoURL
@@ -37,11 +38,6 @@ export default function TabLayout() {
         headerStyle: {
           backgroundColor: theme.colors.surface,
           height: 110,
-          alignItems: 'center',
-          justifyContent: 'center',
-          elevation: 0,           // Remove shadow on Android
-          shadowOpacity: 0,       // Remove shadow on iOS
-          borderBottomWidth: 0,   // Remove bottom border
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
@@ -58,6 +54,15 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble" size={size} color={color} />
           ),
         }}
       />
