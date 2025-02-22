@@ -3,11 +3,20 @@ import { ScrollView, StyleSheet, View, Platform, Pressable } from 'react-native'
 import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
-import * as ImagePicker from 'expo-image-picker';
+import { 
+  MediaTypeOptions, 
+  launchImageLibraryAsync, 
+  requestMediaLibraryPermissionsAsync,
+  MediaType 
+} from 'expo-image-picker';
 import { router } from 'expo-router';
 import { getAuth, signOut, updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../../../firebaseConfig';
 import { TextInput } from 'react-native-paper';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { useMedications } from '../../context/MedicationContext';
+import { formatDosage, displayTime } from '../../utils/formatters';
 
 const styles = StyleSheet.create({
   container: {
@@ -65,9 +74,24 @@ const styles = StyleSheet.create({
   },
 });
 
+// Add this type at the top of the file
+type MedicationSchedule = {
+  days: string[];
+  times: string[];
+  frequency: 'daily' | 'weekly' | 'monthly';
+  dosage: string;
+};
+
+type Medication = {
+  id: string;
+  brand_name: string;
+  schedule?: MedicationSchedule;
+};
+
 export default function Profile() {
   const theme = useTheme();
   const { isDark, setTheme } = useAppTheme();
+  const { medications } = useMedications();
   const [notifications, setNotifications] = React.useState(true);
   const [dataSharing, setDataSharing] = React.useState(false);
   const [profileImage, setProfileImage] = React.useState<string | null>(
@@ -86,7 +110,7 @@ export default function Profile() {
   }, []);
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
       alert('Sorry, we need camera roll permissions to update your profile picture.');
@@ -94,8 +118,8 @@ export default function Profile() {
     }
 
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      const result = await launchImageLibraryAsync({
+        mediaTypes: MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
@@ -147,6 +171,49 @@ export default function Profile() {
       router.replace('/login');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      // Create a formatted string of medication data
+      const medicationData = medications.map(med => {
+        const schedule = med.schedule;
+        return `
+Medication: ${med.brand_name}
+Dosage: ${schedule?.dosage || 'Not specified'}
+Schedule: ${schedule?.times.map(displayTime).join(', ') || 'Not specified'}
+Frequency: ${schedule?.frequency || 'Not specified'}${schedule?.frequency === 'daily' ? '' : 
+  schedule?.frequency === 'weekly' ? 
+    `\nDays: ${schedule?.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}` :
+    `\nDays of Month: ${schedule?.days.join(', ')}`}
+-------------------`;
+      }).join('\n');
+
+      const header = `MEDICATION SCHEDULE
+Generated on: ${new Date().toLocaleDateString()}
+Patient: ${auth.currentUser?.displayName || 'Not specified'}
+===================\n`;
+
+      const fileContent = header + medicationData;
+
+      // Create the file
+      const fileUri = `${FileSystem.documentDirectory}medications.txt`;
+      await FileSystem.writeAsStringAsync(fileUri, fileContent);
+
+      // Share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Export Medications Data',
+          UTI: 'public.plain-text'
+        });
+      } else {
+        alert('Sharing is not available on your platform');
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data. Please try again.');
     }
   };
 
@@ -246,7 +313,7 @@ export default function Profile() {
         <List.Item
           title="Export Data"
           left={props => <List.Icon {...props} icon="download" />}
-          onPress={() => {}}
+          onPress={handleExportData}
         />
       </List.Section>
 
