@@ -5,7 +5,7 @@ import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { getAuth, signOut } from 'firebase/auth';
+import { getAuth, signOut, updateProfile } from 'firebase/auth';
 import { auth } from '../../../firebaseConfig';
 
 export default function Profile() {
@@ -13,7 +13,16 @@ export default function Profile() {
   const { isDark, setTheme } = useAppTheme();
   const [notifications, setNotifications] = React.useState(true);
   const [dataSharing, setDataSharing] = React.useState(false);
-  const [profileImage, setProfileImage] = React.useState<string | null>(null);
+  const [profileImage, setProfileImage] = React.useState<string | null>(
+    auth.currentUser?.photoURL || null
+  );
+
+  // Initialize profile image from auth on mount
+  React.useEffect(() => {
+    if (auth.currentUser?.photoURL) {
+      setProfileImage(auth.currentUser.photoURL);
+    }
+  }, []);
 
   const pickImage = async () => {
     // Request permission
@@ -24,16 +33,29 @@ export default function Profile() {
       return;
     }
 
-    // Pick the image
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    try {
+      // Pick the image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
+      if (!result.canceled) {
+        const imageUri = result.assets[0].uri;
+        setProfileImage(imageUri);
+        
+        // Update Firebase user profile if logged in
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, {
+            photoURL: imageUri
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      alert('Failed to update profile picture');
     }
   };
 
@@ -58,7 +80,7 @@ export default function Profile() {
       >
         <Pressable onPress={pickImage}>
           <Avatar.Image
-            size={80}
+            size={120}
             source={
               profileImage
                 ? { uri: profileImage }
