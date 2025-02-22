@@ -6,6 +6,7 @@ import { PaperProvider } from 'react-native-paper';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { lightTheme, darkTheme } from './constants/theme';
 import { MedicationProvider } from './context/MedicationContext';
+import React from 'react';
 
 declare global {
   var user: {
