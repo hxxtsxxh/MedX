@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
-import { useTheme, Text, Card, Chip, Button, Surface, IconButton } from 'react-native-paper';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useTheme, Text, Surface, ActivityIndicator, Card } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useMedications } from '../../context/MedicationContext';
 import { getDrugInteractions } from '../api/medications';
-import { Ionicons } from '@expo/vector-icons';
-import { formatTime, formatDosage, displayTime } from '../../utils/formatters';
+import { MedicationItem } from '../../components/MedicationItem';
 
 export default function Interactions() {
   const theme = useTheme();
-  const { medications, removeMedication, loading } = useMedications();
+  const { medications, loading } = useMedications();
   const [interactions, setInteractions] = useState<string[]>([]);
   const [checkingInteractions, setCheckingInteractions] = useState(false);
 
@@ -57,9 +56,7 @@ export default function Interactions() {
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{
-          duration: 600
-        }}
+        transition={{ duration: 600 }}
         style={styles.header}
       >
         <Text variant="headlineMedium">Drug Interactions</Text>
@@ -68,92 +65,69 @@ export default function Interactions() {
         </Text>
       </MotiView>
 
-      <Surface style={[styles.medicationList, { backgroundColor: theme.colors.surfaceVariant }]}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>Current Medications</Text>
-        {loading ? (
-          <ActivityIndicator style={styles.loader} />
-        ) : (
-          <View style={styles.chipContainer}>
-            {medications.map((med) => (
-              <MotiView
+      <Card style={styles.section}>
+        <Card.Title title="Current Medications" />
+        <Card.Content>
+          {loading ? (
+            <ActivityIndicator />
+          ) : medications.length > 0 ? (
+            medications.map((med) => (
+              <MedicationItem
                 key={med.id}
-                from={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                style={styles.medicationCard}
-              >
-                <Surface style={[styles.medCardContent, { backgroundColor: theme.colors.surface }]}>
-                  <View style={styles.medInfo}>
-                    <Text variant="titleMedium">{med.brand_name}</Text>
-                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                      {formatDosage(med.schedule?.dosage || '')}
-                    </Text>
-                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      {med.schedule?.times.map(displayTime).join(', ')}
+                medication={med}
+                showTime={false}
+                showFrequency={true}
+              />
+            ))
+          ) : (
+            <Text variant="bodyMedium">No medications added yet</Text>
+          )}
+        </Card.Content>
+      </Card>
+
+      <Card style={styles.section}>
+        <Card.Title title="Potential Interactions" />
+        <Card.Content>
+          {checkingInteractions ? (
+            <ActivityIndicator />
+          ) : interactions.length > 0 ? (
+            interactions.map((interaction, index) => {
+              const severity = getInteractionSeverity(interaction);
+              return (
+                <Surface
+                  key={index}
+                  style={[
+                    styles.interactionItem,
+                    { backgroundColor: theme.colors.surfaceVariant }
+                  ]}
+                >
+                  <View style={styles.severityIndicator}>
+                    <View
+                      style={[
+                        styles.severityDot,
+                        { backgroundColor: getSeverityColor(severity) }
+                      ]}
+                    />
+                    <Text
+                      variant="labelSmall"
+                      style={{ color: getSeverityColor(severity) }}
+                    >
+                      {severity.toUpperCase()}
                     </Text>
                   </View>
-                  <IconButton
-                    icon="close"
-                    size={20}
-                    onPress={() => removeMedication(med.id)}
-                  />
-                </Surface>
-              </MotiView>
-            ))}
-          </View>
-        )}
-      </Surface>
-
-      <Surface style={[styles.interactionsContainer, { backgroundColor: theme.colors.surface }]}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>Potential Interactions</Text>
-        {checkingInteractions ? (
-          <ActivityIndicator style={styles.loader} />
-        ) : interactions.length > 0 ? (
-          interactions.map((interaction, index) => {
-            const severity = getInteractionSeverity(interaction);
-            return (
-              <MotiView
-                key={index}
-                from={{ opacity: 0, translateY: 20 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ delay: index * 100 }}
-                style={[
-                  styles.interactionItem,
-                  { borderLeftColor: getSeverityColor(severity) }
-                ]}
-              >
-                <View style={styles.severityIndicator}>
-                  <Ionicons
-                    name={severity === 'high' ? 'warning' : 'information-circle'}
-                    size={24}
-                    color={getSeverityColor(severity)}
-                  />
-                  <Text
-                    variant="labelSmall"
-                    style={[styles.severityLabel, { color: getSeverityColor(severity) }]}
-                  >
-                    {severity.toUpperCase()} RISK
+                  <Text variant="bodyMedium" style={styles.interactionText}>
+                    {interaction}
                   </Text>
-                </View>
-                <Text variant="bodyMedium">{interaction}</Text>
-              </MotiView>
-            );
-          })
-        ) : (
-          <View style={styles.noInteractions}>
-            <Ionicons name="checkmark-circle" size={48} color={theme.colors.primary} />
-            <Text variant="titleMedium" style={{ textAlign: 'center', marginTop: 16 }}>
-              No interactions detected
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant, marginTop: 8 }}
-            >
-              Your current medication combination appears to be safe
-            </Text>
-          </View>
-        )}
-      </Surface>
+                </Surface>
+              );
+            })
+          ) : medications.length < 2 ? (
+            <Text variant="bodyMedium">Add at least two medications to check for interactions</Text>
+          ) : (
+            <Text variant="bodyMedium">No known interactions found</Text>
+          )}
+        </Card.Content>
+      </Card>
     </ScrollView>
   );
 }
@@ -163,59 +137,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
-    paddingTop: 40,
-  },
-  medicationList: {
-    margin: 20,
     padding: 16,
-    borderRadius: 16,
+    paddingTop: 24,
   },
-  sectionTitle: {
-    marginBottom: 16,
-  },
-  chipContainer: {
-    gap: 12,
-  },
-  medicationCard: {
-    marginBottom: 8,
-  },
-  medCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 12,
-  },
-  medInfo: {
-    flex: 1,
-  },
-  interactionsContainer: {
-    margin: 20,
-    padding: 16,
-    borderRadius: 16,
+  section: {
+    margin: 16,
+    marginTop: 8,
   },
   interactionItem: {
     padding: 16,
-    marginBottom: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    borderLeftWidth: 4,
+    marginVertical: 4,
   },
   severityIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  severityLabel: {
-    marginLeft: 8,
-    fontWeight: 'bold',
+  severityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
-  loader: {
-    margin: 20,
-  },
-  noInteractions: {
-    alignItems: 'center',
-    padding: 24,
+  interactionText: {
+    flex: 1,
   },
 });

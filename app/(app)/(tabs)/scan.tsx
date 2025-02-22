@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip } from 'react-native-paper';
 import { TimePickerModal } from 'react-native-paper-dates';
+import { enGB, registerTranslation } from 'react-native-paper-dates';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { Portal, Modal } from 'react-native-paper';
@@ -11,6 +12,9 @@ import { useMedications } from '../../context/MedicationContext';
 import { SuccessAnimation } from '../../components/SuccessAnimation';
 import { formatTime, formatDosage, getDosageUnit, storeTime, displayTime } from '../../utils/formatters';
 import debounce from 'lodash/debounce';
+
+// Register the English locale
+registerTranslation('en-GB', enGB);
 
 export default function Scan() {
   const theme = useTheme();
@@ -254,9 +258,14 @@ export default function Scan() {
       <TimePickerModal
         visible={timePickerVisible}
         onDismiss={() => setTimePickerVisible(false)}
-        onConfirm={onTimeConfirm}
-        hours={12}
-        minutes={0}
+        onConfirm={({ hours, minutes }) => {
+          setSchedule(prev => ({
+            ...prev,
+            times: [...prev.times, storeTime(hours, minutes)]
+          }));
+          setTimePickerVisible(false);
+        }}
+        locale="en-GB"
       />
     </ScrollView>
   );
