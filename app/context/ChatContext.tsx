@@ -97,17 +97,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       console.log('Refreshing medications before processing message...');
       const latestMeds = await refreshMedications();
       
-      if (!latestMeds || latestMeds.length === 0) {
-        console.log('No medications found after refresh');
-        if (message.toLowerCase().includes('medication')) {
-          return "I don't see any medications in your current list. Would you like to add some medications?";
-        }
-      } else {
-        console.log(`Found ${latestMeds.length} medications after refresh`);
-      }
-
       // Update current meds and schedule
-      const validMeds = latestMeds.filter(med => 
+      const validMeds = latestMeds.filter((med: Medication) => 
         med && med.brand_name && med.schedule && 
         med.schedule.frequency && 
         med.schedule.days && 
@@ -117,7 +108,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       updateSchedule(validMeds);
 
       // Process the message with latest medications
-      return processChatMessage(
+      return await processChatMessage(
         message,
         chatHistory,
         validMeds,

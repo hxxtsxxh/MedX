@@ -5,6 +5,7 @@ import { MotiView } from 'moti';
 import { useChat } from '../../context/ChatContext';
 import { useRouter } from 'expo-router';
 import { Easing } from 'react-native';
+import { format } from 'date-fns';
 
 interface ChatMessage {
   role: 'user' | 'bot';
@@ -56,10 +57,9 @@ How can I assist you today?`,
 
   // Add this animation effect
   useEffect(() => {
-    let dotsInterval: NodeJS.Timeout;
+    let dotsInterval: NodeJS.Timeout | undefined;
     
     if (isLoading) {
-      // Start dots animation
       dotsInterval = setInterval(() => {
         setDots(prev => prev.length >= 3 ? '' : prev + '.');
       }, 500);
@@ -71,12 +71,16 @@ How can I assist you today?`,
         useNativeDriver: true,
       }).start();
     } else {
-      clearInterval(dotsInterval);
+      if (dotsInterval) {
+        clearInterval(dotsInterval);
+      }
       fadeAnim.setValue(0);
     }
 
     return () => {
-      clearInterval(dotsInterval);
+      if (dotsInterval) {
+        clearInterval(dotsInterval);
+      }
     };
   }, [isLoading]);
 
@@ -124,7 +128,7 @@ How can I assist you today?`,
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
     >
       <ScrollView
@@ -132,9 +136,7 @@ How can I assist you today?`,
         style={styles.chatContainer}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ 
-          paddingBottom: keyboardVisible ? 16 : 0 // No padding when keyboard is hidden
-        }}
+        contentContainerStyle={styles.chatContent}
       >
         {chatHistory.map((msg, index) => (
           <MotiView
@@ -142,8 +144,10 @@ How can I assist you today?`,
             from={{ opacity: 0, translateY: 10 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{
-              duration: 300,
-              delay: index * 100,
+              type: 'spring',
+              delay: index * 50,
+              damping: 20,
+              stiffness: 300,
             }}
             style={[
               styles.messageContainer,
@@ -153,13 +157,40 @@ How can I assist you today?`,
             <Surface
               style={[
                 styles.messageBubble,
-                {
-                  backgroundColor: msg.role === 'user' ? theme.colors.primary : theme.colors.surfaceVariant
+                msg.role === 'user' ? {
+                  backgroundColor: theme.colors.primary,
+                  borderBottomRightRadius: 4,
+                } : {
+                  backgroundColor: theme.dark 
+                    ? theme.colors.surfaceVariant
+                    : theme.colors.surface,
+                  borderBottomLeftRadius: 4,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outline,
                 }
               ]}
+              elevation={2}
             >
-              <Text style={{ color: msg.role === 'user' ? theme.colors.onPrimary : theme.colors.onSurfaceVariant }}>
+              <Text style={[
+                styles.messageText,
+                { 
+                  color: msg.role === 'user' 
+                    ? theme.colors.onPrimary 
+                    : theme.colors.onSurface 
+                }
+              ]}>
                 {msg.content}
+              </Text>
+              <Text style={[
+                styles.timestamp,
+                { 
+                  color: msg.role === 'user' 
+                    ? theme.colors.onPrimary 
+                    : theme.colors.onSurfaceVariant,
+                  opacity: 0.7
+                }
+              ]}>
+                {format(msg.timestamp, 'HH:mm')}
               </Text>
             </Surface>
           </MotiView>
@@ -168,16 +199,24 @@ How can I assist you today?`,
           <MotiView
             from={{ opacity: 0, translateY: 10 }}
             animate={{ opacity: 1, translateY: 0 }}
-            transition={{ duration: 300 }}
+            transition={{ type: 'spring', damping: 20 }}
             style={[styles.messageContainer, styles.botMessage]}
           >
             <Surface
               style={[
                 styles.messageBubble,
-                { backgroundColor: theme.colors.surfaceVariant }
+                styles.loadingBubble,
+                { 
+                  backgroundColor: theme.dark 
+                    ? theme.colors.surfaceVariant
+                    : theme.colors.surface,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outline,
+                }
               ]}
+              elevation={1}
             >
-              <Text style={{ color: theme.colors.onSurfaceVariant }}>
+              <Text style={{ color: theme.colors.onSurface }}>
                 Typing{dots}
               </Text>
             </Surface>
@@ -189,33 +228,30 @@ How can I assist you today?`,
         style={[
           styles.inputContainer, 
           { 
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            borderTopWidth: 0,
-            elevation: 0,
-            shadowOpacity: 0,
-            paddingBottom: Platform.OS === 'ios' ? 20 : 16,
-            marginBottom: keyboardVisible ? 0 : Platform.OS === 'ios' ? 34 : 24 // Increased margin when keyboard is hidden
+            backgroundColor: theme.dark 
+              ? theme.colors.surface
+              : theme.colors.background,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.outline,
           }
         ]}
+        elevation={4}
       >
         <TextInput
           value={message}
           onChangeText={setMessage}
           placeholder="Type your message..."
-          style={[styles.input, {
-            backgroundColor: 'transparent',
-            fontSize: 16,
-            color: theme.colors.onSurface,
-          }]}
-          onFocus={() => {
-            setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
-          }}
+          style={[styles.input, { backgroundColor: 'transparent' }]}
+          placeholderTextColor={theme.colors.onSurfaceVariant}
+          onSubmitEditing={sendMessage}
+          multiline
+          maxLength={500}
           right={
             <TextInput.Icon 
               icon="send"
               disabled={!message.trim() || isLoading}
               onPress={sendMessage}
-              color={theme.colors.primary}
+              color={message.trim() ? theme.colors.primary : theme.colors.onSurfaceVariant}
             />
           }
         />
@@ -229,44 +265,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatContainer: {
-    paddingTop: 120,
     flex: 1,
-    padding: 16,
+    paddingTop: 120,
+  },
+  chatContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   messageContainer: {
     marginBottom: 16,
+    maxWidth: '85%',
   },
   userMessage: {
-    alignItems: 'flex-end',
+    alignSelf: 'flex-end',
   },
   botMessage: {
-    alignItems: 'flex-start',
+    alignSelf: 'flex-start',
   },
   messageBubble: {
     padding: 12,
     borderRadius: 16,
-    maxWidth: '80%',
+    minWidth: 60,
+  },
+  loadingBubble: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  timestamp: {
+    fontSize: 11,
+    marginTop: 4,
+    alignSelf: 'flex-end',
   },
   inputContainer: {
     padding: 8,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 16,
-    marginBottom: Platform.OS === 'ios' ? 0 : 8,
-    borderTopWidth: 0,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
   },
   input: {
-    backgroundColor: 'transparent',
     fontSize: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  loadingContainer: {
-    alignItems: 'flex-start',
-    marginVertical: 8,
-    marginHorizontal: 16,
-  },
-  loadingBubble: {
-    padding: 12,
-    borderRadius: 16,
-    maxWidth: '80%',
+    maxHeight: 100,
   },
 }); 

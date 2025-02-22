@@ -11,6 +11,10 @@ interface MedicationContextType {
   removeMedication: (id: string) => Promise<void>;
   updateMedication: (id: string, medication: Medication) => Promise<void>;
   loading: boolean;
+  takenMedications: Record<string, string[]>; // date -> medication IDs
+  takeMedication: (medicationId: string) => void;
+  untakeMedication: (medicationId: string) => void;
+  getTakenMedications: (date?: string) => string[];
   refreshMedications: () => Promise<Medication[]>;
 }
 
@@ -20,6 +24,10 @@ const MedicationContext = createContext<MedicationContextType>({
   removeMedication: async () => {},
   updateMedication: async () => {},
   loading: false,
+  takenMedications: {},
+  takeMedication: () => {},
+  untakeMedication: () => {},
+  getTakenMedications: () => [],
   refreshMedications: async () => [],
 });
 
@@ -28,6 +36,9 @@ export const useMedications = () => useContext(MedicationContext);
 export function MedicationProvider({ children }: { children: React.ReactNode }) {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [takenMedications, setTakenMedications] = useState<Record<string, string[]>>({});
+
+  const today = new Date().toISOString().split('T')[0];
 
   // Set up real-time listener for medications
   useEffect(() => {
@@ -211,13 +222,77 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const takeMedication = (medicationId: string) => {
+    setTakenMedications(prev => {
+      const todaysTaken = prev[today] || [];
+      return {
+        ...prev,
+        [today]: [...new Set([...todaysTaken, medicationId])]
+      };
+    });
+  };
+
+  const untakeMedication = (medicationId: string) => {
+    setTakenMedications(prev => {
+      const todaysTaken = prev[today] || [];
+      return {
+        ...prev,
+        [today]: todaysTaken.filter(id => id !== medicationId)
+      };
+    });
+  };
+
+  const getTakenMedications = (date: string = today) => {
+    return takenMedications[date] || [];
+  };
+
+  const refreshMedications = async () => {
+    if (!auth.currentUser) {
+      showMessage({
+        message: "Authentication Error",
+        description: "Please sign in to refresh medications",
+        type: "danger",
+        duration: 3000,
+      });
+      return [];
+    }
+
+    try {
+      const q = query(
+        collection(db, 'medications'),
+        where('userId', '==', auth.currentUser.uid)
+      );
+
+      const snapshot = await getDocs(q);
+      const meds = snapshot.docs.map(doc => ({
+        ...doc.data() as Medication,
+        id: doc.id,
+      }));
+      setMedications(meds);
+      return meds;
+    } catch (error) {
+      console.error('Error refreshing medications:', error);
+      showMessage({
+        message: "Error Refreshing Medications",
+        description: "Please try again",
+        type: "danger",
+        duration: 3000,
+      });
+      return [];
+    }
+  };
+
   return (
     <MedicationContext.Provider value={{ 
       medications, 
       addMedication,
       removeMedication,
       updateMedication,
-      loading, 
+      loading,
+      takenMedications,
+      takeMedication,
+      untakeMedication,
+      getTakenMedications,
       refreshMedications,
     }}>
       {children}

@@ -181,25 +181,46 @@ function formatMedicationContext(medications: Medication[], userName: string) {
   }];
 }
 
+// Convert ChatMessage to Gemini API format
+function convertToGeminiFormat(message: ChatMessage) {
+  return {
+    role: message.role === 'user' ? 'user' : 'model',
+    parts: [{ text: message.content }]
+  };
+}
+
 export async function processChatMessage(
-  message: string, 
-  chatHistory: ChatMessage[], 
+  message: string,
+  chatHistory: ChatMessage[],
   medications: Medication[],
   userName: string
 ) {
   try {
+    // Format medication context
+    const medicationContext = formatMedicationContext(medications, userName);
+
+    // Convert chat history to Gemini format
+    const formattedHistory = chatHistory.map(convertToGeminiFormat);
+
     const response = await axios.post(API_URL, {
       contents: [
         MEDICAL_PROMPT,
-        ...formatMedicationContext(medications, userName),
+        ...medicationContext,
+        ...formattedHistory,
         { role: 'user', parts: [{ text: message }] }
       ]
     });
 
-    return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 
-      "I apologize, but I couldn't process that request properly.";
+    if (!response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      throw new Error('Invalid response format from API');
+    }
+
+    return response.data.candidates[0].content.parts[0].text;
   } catch (error) {
-    console.error('Error processing chat message:', error);
+    console.error('Error in processChatMessage:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('API Error:', error.response?.data);
+    }
     throw error;
   }
 }

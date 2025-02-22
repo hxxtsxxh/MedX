@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View, Platform, Pressable } from 'react-native';
-import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal } from 'react-native-paper';
+import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal, ActivityIndicator } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
 import { 
@@ -17,7 +17,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useMedications } from '../../context/MedicationContext';
 import { formatDosage, displayTime } from '../../utils/formatters';
-import { Stack } from 'expo-router';
+import * as Print from 'expo-print';
+import axios from 'axios';
 
 const styles = StyleSheet.create({
   container: {
@@ -89,15 +90,20 @@ type Medication = {
   schedule?: MedicationSchedule;
 };
 
-/**
- * @feature Profile Management
- * @description Manage user profile, settings, and preferences
- * @location Profile Tab
- */
+type GeminiResponse = {
+  candidates: Array<{
+    content: {
+      parts: Array<{
+        text: string;
+      }>;
+    };
+  }>;
+};
+
 export default function Profile() {
   const theme = useTheme();
   const { isDark, setTheme } = useAppTheme();
-  const { medications } = useMedications();
+  const { medications, getTakenMedications } = useMedications();
   const [notifications, setNotifications] = React.useState(true);
   const [dataSharing, setDataSharing] = React.useState(false);
   const [profileImage, setProfileImage] = React.useState<string | null>(
@@ -107,6 +113,7 @@ export default function Profile() {
   const [passwordModalVisible, setPasswordModalVisible] = React.useState(false);
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // Initialize profile image from auth on mount
   React.useEffect(() => {
@@ -197,46 +204,184 @@ export default function Profile() {
     }
   };
 
+  const generateMedicationReport = async (medications: Medication[]): Promise<string> => {
+    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
+    const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+
+    try {
+      const medicationInfo = medications.map(med => ({
+        name: med.brand_name,
+        genericName: med.generic_name,
+        dosage: med.schedule?.dosage,
+        timing: med.schedule?.times.map(displayTime).join(', '),
+        frequency: med.schedule?.frequency,
+        days: med.schedule?.frequency === 'daily' ? 'Daily' :
+              med.schedule?.frequency === 'weekly' ? 
+                med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') :
+                `Monthly on days: ${med.schedule?.days.join(', ')}`,
+        adherence: getTakenMedications().includes(med.id) ? 'Taken today' : 'Not taken today'
+      }));
+
+      const prompt = `Create a concise medication report with these sections:
+
+1. MEDICATION REGIMEN OVERVIEW
+A brief, one-paragraph summary of the overall medication schedule.
+
+2. DETAILED MEDICATION INFORMATION
+For each medication, list:
+• Brand name in CAPS (generic name)
+• Dosage: [amount]
+• Schedule: [time and frequency]
+• Status: [adherence]
+
+3. ADHERENCE SUMMARY
+A brief statement about medication adherence.
+
+4. RECOMMENDATIONS
+3-4 bullet points for optimal medication management.
+
+Keep sections clearly separated with single line breaks. Use minimal formatting.
+
+Data:
+${JSON.stringify(medicationInfo, null, 2)}`;
+
+      const response = await axios.post<GeminiResponse>(
+        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        }
+      );
+
+      const content = response.data.candidates[0].content.parts[0].text
+        .replace(/```/g, '')
+        .replace(/\n\n+/g, '\n\n')
+        .trim();
+
+      return content;
+    } catch (error) {
+      console.error('Error generating report with Gemini:', error);
+      throw new Error('Failed to generate medication report');
+    }
+  };
+
   const handleExportData = async () => {
     try {
-      // Create a formatted string of medication data
-      const medicationData = medications.map(med => {
-        const schedule = med.schedule;
-        return `
-Medication: ${med.brand_name}
-Dosage: ${schedule?.dosage || 'Not specified'}
-Schedule: ${schedule?.times.map(displayTime).join(', ') || 'Not specified'}
-Frequency: ${schedule?.frequency || 'Not specified'}${schedule?.frequency === 'daily' ? '' : 
-  schedule?.frequency === 'weekly' ? 
-    `\nDays: ${schedule?.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}` :
-    `\nDays of Month: ${schedule?.days.join(', ')}`}
--------------------`;
-      }).join('\n');
+      setIsGeneratingReport(true);
+      const reportContent = await generateMedicationReport(medications);
 
-      const header = `MEDICATION SCHEDULE
-Generated on: ${new Date().toLocaleDateString()}
-Patient: ${auth.currentUser?.displayName || 'Not specified'}
-===================\n`;
+      const date = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
 
-      const fileContent = header + medicationData;
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.4;
+        color: #333;
+        padding: 20px;
+        margin: 0;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #0D47A1;
+        padding-bottom: 15px;
+      }
+      .title {
+        color: #0D47A1;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      .subtitle {
+        color: #666;
+        font-size: 14px;
+        margin: 2px 0;
+      }
+      .section {
+        margin: 15px 0;
+      }
+      .section-title {
+        color: #1976D2;
+        font-size: 16px;
+        font-weight: bold;
+        margin: 15px 0 8px 0;
+        border-bottom: 1px solid #1976D2;
+        padding-bottom: 3px;
+      }
+      .content {
+        margin: 8px 0;
+        font-size: 14px;
+      }
+      ul {
+        margin: 5px 0;
+        padding-left: 20px;
+      }
+      li {
+        margin: 3px 0;
+      }
+      p {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="title">MEDICATION MANAGEMENT REPORT</div>
+      <div class="subtitle">Generated: ${date}</div>
+      <div class="subtitle">Patient: ${auth.currentUser?.displayName || 'Not specified'}</div>
+    </div>
+    ${reportContent
+      .split('\n\n')
+      .map(section => {
+        if (section.includes(':')) {
+          const [title, ...content] = section.split('\n');
+          return `
+            <div class="section">
+              <div class="section-title">${title.trim()}</div>
+              <div class="content">
+                ${content.join('<br>')}
+              </div>
+            </div>`;
+        }
+        return `<div class="content">${section}</div>`;
+      })
+      .join('')}
+  </body>
+</html>`;
 
-      // Create the file
-      const fileUri = `${FileSystem.documentDirectory}medications.txt`;
-      await FileSystem.writeAsStringAsync(fileUri, fileContent);
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
+      });
 
-      // Share the file
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/plain',
-          dialogTitle: 'Export Medications Data',
-          UTI: 'public.plain-text'
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Export Medication Report',
+          UTI: 'com.adobe.pdf'
         });
       } else {
         alert('Sharing is not available on your platform');
       }
     } catch (error) {
-      console.error('Error exporting data:', error);
-      alert('Failed to export data. Please try again.');
+      console.error('Error exporting report:', error);
+      alert('Failed to export report. Please try again.');
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -334,8 +479,8 @@ Patient: ${auth.currentUser?.displayName || 'Not specified'}
         />
 
         <List.Item
-          title="Export Data"
-          left={props => <List.Icon {...props} icon="download" />}
+          title="Export Report"
+          left={props => <List.Icon {...props} icon="file-export" />}
           onPress={handleExportData}
         />
       </List.Section>
@@ -443,6 +588,22 @@ Patient: ${auth.currentUser?.displayName || 'Not specified'}
           >
             Update Password
           </Button>
+        </Modal>
+
+        <Modal
+          visible={isGeneratingReport}
+          dismissable={false}
+          contentContainerStyle={{
+            backgroundColor: theme.colors.surface,
+            padding: 24,
+            margin: 20,
+            borderRadius: 12,
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text variant="bodyLarge">Generating your report...</Text>
         </Modal>
       </Portal>
     </ScrollView>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Platform, Pressable } from 'react-native';
+import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip, SegmentedButtons, Surface } from 'react-native-paper';
 import { TimePickerModal } from 'react-native-paper-dates';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,12 @@ import { useMedications } from '../../context/MedicationContext';
 import { SuccessAnimation } from '../../components/SuccessAnimation';
 import { formatTime, formatDosage, getDosageUnit, storeTime, displayTime } from '../../utils/formatters';
 import debounce from 'lodash/debounce';
+import { TimePickerWrapper } from '../../components/TimePickerWrapper';
+
+interface Step {
+  title: string;
+  subtitle: string;
+}
 
 export default function Scan() {
   const theme = useTheme();
@@ -33,8 +39,33 @@ export default function Scan() {
   const [scheduleType, setScheduleType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [monthlyDays, setMonthlyDays] = useState<number[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [currentStep, setCurrentStep] = useState<number>(0);
+  
+  const steps: Step[] = [
+    {
+      title: "Search Medication",
+      subtitle: "Find your medication in our database"
+    },
+    {
+      title: "Set Dosage",
+      subtitle: "How much do you need to take?"
+    },
+    {
+      title: "Schedule",
+      subtitle: "When do you need to take it?"
+    }
+  ];
 
-  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weekDaysFull = {
+    'Mon': 'monday',
+    'Tue': 'tuesday',
+    'Wed': 'wednesday',
+    'Thu': 'thursday',
+    'Fri': 'friday',
+    'Sat': 'saturday',
+    'Sun': 'sunday'
+  };
   const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
 
   // Create a debounced search function
@@ -93,20 +124,13 @@ export default function Scan() {
         
         // Close the modal immediately for better UX
         setManualInputVisible(false);
+        
+        // Reset all states before showing success
+        resetManualInputStates();
+        
         setShowSuccess(true);
         
         await addMedication(medicationWithSchedule);
-        
-        // Reset form state
-        setSelectedMedication(null);
-        setSearchQuery('');
-        setSchedule({
-          days: [],
-          times: [],
-          frequency: 'daily',
-          dosage: '',
-        });
-        setScheduleStep(false);
         
         // Hide success message after delay
         setTimeout(() => {
@@ -124,7 +148,7 @@ export default function Scan() {
     setSchedule(prev => ({
       ...prev,
       frequency: freq,
-      days: freq === 'daily' ? weekDays.map(day => day.toLowerCase()) : [],
+      days: freq === 'daily' ? Object.values(weekDaysFull) : [],
     }));
   };
 
@@ -143,9 +167,120 @@ export default function Scan() {
     setTimePickerVisible(false);
   };
 
-  const renderScheduleStep = () => (
-    <ScrollView style={styles.scheduleContainer}>
+  const handleDayToggle = (day: string) => {
+    const fullDay = schedule.frequency === 'weekly' ? weekDaysFull[day as keyof typeof weekDaysFull] : day;
+    setSchedule(prev => ({
+      ...prev,
+      days: prev.days.includes(fullDay)
+        ? prev.days.filter(d => d !== fullDay)
+        : [...prev.days, fullDay],
+    }));
+  };
+
+  const renderStepIndicator = () => (
+    <View style={styles.stepIndicator}>
+      {steps.map((_, index) => (
+        <View key={index} style={styles.stepRow}>
+          <View style={[
+            styles.stepDot,
+            {
+              backgroundColor: index <= currentStep ? theme.colors.primary : theme.colors.surfaceVariant,
+            }
+          ]} />
+          {index < steps.length - 1 && (
+            <View style={[
+              styles.stepLine,
+              {
+                backgroundColor: index < currentStep ? theme.colors.primary : theme.colors.surfaceVariant,
+              }
+            ]} />
+          )}
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderSearchStep = () => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={motiTransition}
+    >
       <TextInput
+        mode="outlined"
+        label="Search Medications"
+        placeholder="Type medication name..."
+        value={searchQuery}
+        onChangeText={handleSearch}
+        right={<TextInput.Icon icon="magnify" />}
+        style={styles.searchInput}
+      />
+      {loading ? (
+        <ActivityIndicator style={styles.loading} />
+      ) : (
+        <ScrollView style={styles.suggestionsContainer}>
+          {suggestions.map((med, index) => (
+            <Pressable
+              key={index}
+              onPress={() => setSelectedMedication(med)}
+              style={({ pressed }) => [
+                styles.suggestionItem,
+                {
+                  backgroundColor: selectedMedication?.id === med.id
+                    ? theme.colors.primaryContainer 
+                    : theme.colors.surfaceVariant,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                }
+              ]}
+            >
+              <View style={styles.suggestionTextContainer}>
+                <Text 
+                  variant="titleMedium"
+                  style={[
+                    styles.suggestionText,
+                    { 
+                      color: selectedMedication?.id === med.id
+                        ? theme.colors.onPrimaryContainer 
+                        : theme.colors.onSurface,
+                      fontWeight: selectedMedication?.id === med.id ? '600' : '400'
+                    }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {med.brand_name}
+                </Text>
+              </View>
+              {selectedMedication?.id === med.id && (
+                <Ionicons 
+                  name="checkmark-circle" 
+                  size={24} 
+                  color={theme.colors.primary} 
+                  style={styles.checkIcon}
+                />
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </MotiView>
+  );
+
+  const renderDosageStep = () => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={motiTransition}
+      style={styles.dosageContainer}
+    >
+      <Surface style={styles.selectedMedCard} elevation={1}>
+        <Text variant="titleLarge">{selectedMedication?.brand_name}</Text>
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          {selectedMedication?.generic_name}
+        </Text>
+      </Surface>
+
+      <TextInput
+        mode="outlined"
         label="Dosage"
         value={schedule.dosage}
         onChangeText={(text) => {
@@ -155,111 +290,177 @@ export default function Scan() {
             dosage: numericValue ? formatDosage(numericValue, selectedMedication?.brand_name || '') : ''
           }));
         }}
-        placeholder={`Enter dosage (${getDosageUnit(selectedMedication?.brand_name || '')})`}
+        right={<TextInput.Affix text={getDosageUnit(selectedMedication?.brand_name || '')} />}
         keyboardType="numeric"
-        style={styles.input}
+        style={styles.dosageInput}
       />
-
-      <Text variant="titleMedium" style={styles.sectionTitle}>Frequency</Text>
-      <View style={styles.chipGroup}>
-        {['daily', 'weekly', 'monthly'].map(freq => (
-          <Chip
-            key={freq}
-            selected={scheduleType === freq}
-            onPress={() => handleFrequencyChange(freq as 'daily' | 'weekly' | 'monthly')}
-            style={styles.chip}
-          >
-            {freq.charAt(0).toUpperCase() + freq.slice(1)}
-          </Chip>
-        ))}
-      </View>
-
-      {scheduleType === 'monthly' ? (
-        <>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Days of Month</Text>
-          <View style={styles.chipGroup}>
-            {monthDays.map(day => (
-              <Chip
-                key={day}
-                selected={monthlyDays.includes(day)}
-                onPress={() => {
-                  setMonthlyDays(prev => 
-                    prev.includes(day) 
-                      ? prev.filter(d => d !== day)
-                      : [...prev, day]
-                  );
-                  setSchedule(prev => ({
-                    ...prev,
-                    days: monthlyDays.map(d => d.toString())
-                  }));
-                }}
-                style={styles.monthDayChip}
-              >
-                {day}
-              </Chip>
-            ))}
-          </View>
-        </>
-      ) : scheduleType === 'weekly' ? (
-        <>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Days of Week</Text>
-          <View style={styles.chipGroup}>
-            {weekDays.map(day => (
-              <Chip
-                key={day}
-                selected={schedule.days.includes(day.toLowerCase())}
-                onPress={() => {
-                  setSchedule(prev => ({
-                    ...prev,
-                    days: prev.days.includes(day.toLowerCase())
-                      ? prev.days.filter(d => d !== day.toLowerCase())
-                      : [...prev.days, day.toLowerCase()]
-                  }));
-                }}
-                style={styles.chip}
-              >
-                {day.slice(0, 3)}
-              </Chip>
-            ))}
-          </View>
-        </>
-      ) : null}
-
-      <Text variant="titleMedium" style={styles.sectionTitle}>Times</Text>
-      <View style={styles.chipGroup}>
-        {schedule.times.map((time, index) => (
-          <Chip
-            key={index}
-            onClose={() => {
-              setSchedule(prev => ({
-                ...prev,
-                times: prev.times.filter((_, i) => i !== index)
-              }));
-            }}
-            style={styles.chip}
-          >
-            {displayTime(time)}
-          </Chip>
-        ))}
-      </View>
-      <Button
-        mode="outlined"
-        onPress={() => setTimePickerVisible(true)}
-        icon="clock"
-        style={styles.addTimeButton}
-      >
-        Add Time
-      </Button>
-
-      <TimePickerModal
-        visible={timePickerVisible}
-        onDismiss={() => setTimePickerVisible(false)}
-        onConfirm={onTimeConfirm}
-        hours={12}
-        minutes={0}
-      />
-    </ScrollView>
+    </MotiView>
   );
+
+  const renderScheduleStep = () => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={motiTransition}
+    >
+      <View style={styles.frequencyContainer}>
+        <SegmentedButtons
+          value={schedule.frequency}
+          onValueChange={(value) => handleFrequencyChange(value as 'daily' | 'weekly' | 'monthly')}
+          buttons={[
+            { value: 'daily', label: 'Daily' },
+            { value: 'weekly', label: 'Weekly' },
+            { value: 'monthly', label: 'Monthly' }
+          ]}
+        />
+      </View>
+
+      {schedule.frequency === 'weekly' && (
+        <View style={styles.daysContainer}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>
+            Select Days
+          </Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.weeklyScrollContent}
+          >
+            {weekDays.map((day) => (
+              <Pressable
+                key={day}
+                onPress={() => handleDayToggle(day)}
+                style={({ pressed }) => [
+                  styles.weeklyDayButton,
+                  {
+                    backgroundColor: schedule.days.includes(weekDaysFull[day as keyof typeof weekDaysFull])
+                      ? theme.colors.primary
+                      : 'transparent',
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                    borderColor: schedule.days.includes(weekDaysFull[day as keyof typeof weekDaysFull])
+                      ? theme.colors.primary
+                      : theme.colors.outline,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.weeklyDayName,
+                    {
+                      color: schedule.days.includes(weekDaysFull[day as keyof typeof weekDaysFull])
+                        ? theme.colors.onPrimary
+                        : theme.colors.onSurface,
+                    },
+                  ]}
+                >
+                  {day}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {schedule.frequency === 'monthly' && (
+        <View style={styles.daysContainer}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>Select Dates</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.monthlyScrollContent}
+          >
+            {[...Array(4)].map((_, weekIndex) => (
+              <View key={weekIndex} style={styles.monthlyWeekContainer}>
+                <Text style={[styles.monthlyWeekLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Week {weekIndex + 1}
+                </Text>
+                <View style={styles.monthlyWeekDays}>
+                  {monthDays.slice(weekIndex * 8, (weekIndex * 8) + 8).map((day) => (
+                    <Pressable
+                      key={day}
+                      onPress={() => handleDayToggle(day.toString())}
+                      style={({ pressed }) => [
+                        styles.monthlyDate,
+                        {
+                          backgroundColor: schedule.days.includes(day.toString())
+                            ? theme.colors.primary
+                            : 'transparent',
+                          transform: [{ scale: pressed ? 0.95 : 1 }],
+                          borderColor: schedule.days.includes(day.toString())
+                            ? theme.colors.primary
+                            : theme.colors.outline,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.monthlyDateText,
+                          {
+                            color: schedule.days.includes(day.toString())
+                              ? theme.colors.onPrimary
+                              : theme.colors.onSurface,
+                          },
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <View style={styles.timesContainer}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Set Times</Text>
+        <View style={styles.timeChips}>
+          {schedule.times.map((time, index) => (
+            <Chip
+              key={index}
+              onClose={() => {
+                setSchedule(prev => ({
+                  ...prev,
+                  times: prev.times.filter((_, i) => i !== index)
+                }));
+              }}
+              style={styles.timeChip}
+            >
+              {displayTime(time)}
+            </Chip>
+          ))}
+        </View>
+        <Button
+          mode="outlined"
+          onPress={() => setTimePickerVisible(true)}
+          icon="clock"
+          style={styles.addTimeButton}
+        >
+          Add Time
+        </Button>
+      </View>
+    </MotiView>
+  );
+
+  const resetManualInputStates = () => {
+    setCurrentStep(0);
+    setSelectedMedication(null);
+    setSearchQuery('');
+    setSchedule({
+      days: [],
+      times: [],
+      frequency: 'daily',
+      dosage: '',
+    });
+    setSuggestions([]);
+    setScheduleType('daily');
+    setMonthlyDays([]);
+  };
+
+  const handleCloseManualInput = () => {
+    setManualInputVisible(false);
+    resetManualInputStates();
+  };
 
   return (
     <>
@@ -361,78 +562,70 @@ export default function Scan() {
         <Portal>
           <Modal
             visible={manualInputVisible}
-            onDismiss={() => setManualInputVisible(false)}
-            contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}
+            onDismiss={handleCloseManualInput}
+            contentContainerStyle={[
+              styles.modalContainer,
+              { backgroundColor: theme.colors.surface }
+            ]}
           >
-            <Text variant="headlineMedium" style={styles.modalTitle}>
-              {scheduleStep ? 'Set Schedule' : 'Add Medication'}
-            </Text>
+            <View style={styles.modalHeader}>
+              <Text variant="headlineSmall">{steps[currentStep].title}</Text>
+              <Text 
+                variant="bodyMedium" 
+                style={{ color: theme.colors.onSurfaceVariant }}
+              >
+                {steps[currentStep].subtitle}
+              </Text>
+            </View>
 
-            {scheduleStep ? renderScheduleStep() : (
-              <>
-                <TextInput
-                  label="Search Medications"
-                  value={searchQuery}
-                  onChangeText={handleSearch}
-                  style={styles.searchInput}
-                />
-                {loading ? (
-                  <ActivityIndicator style={styles.loading} />
-                ) : (
-                  <ScrollView style={styles.suggestionsContainer}>
-                    {suggestions.map((med, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.suggestionItem,
-                          selectedMedication?.brand_name === med.brand_name && styles.selectedItem,
-                          { backgroundColor: theme.colors.surfaceVariant }
-                        ]}
-                        onPress={() => setSelectedMedication(med)}
-                      >
-                        <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-                          {med.brand_name}
-                        </Text>
-                        {selectedMedication?.brand_name === med.brand_name && (
-                          <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
-              </>
-            )}
+            {renderStepIndicator()}
 
-            <View style={styles.modalButtons}>
+            <ScrollView style={styles.modalContent}>
+              {currentStep === 0 && renderSearchStep()}
+              {currentStep === 1 && renderDosageStep()}
+              {currentStep === 2 && renderScheduleStep()}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
               <Button
                 mode="outlined"
                 onPress={() => {
-                  if (scheduleStep) {
-                    setScheduleStep(false);
+                  if (currentStep === 0) {
+                    handleCloseManualInput();
                   } else {
-                    setManualInputVisible(false);
+                    setCurrentStep(prev => prev - 1);
                   }
                 }}
               >
-                {scheduleStep ? 'Back' : 'Cancel'}
+                {currentStep === 0 ? 'Cancel' : 'Back'}
               </Button>
               <Button
                 mode="contained"
                 onPress={() => {
-                  if (scheduleStep) {
+                  if (currentStep === 2) {
                     handleAddMedication();
                   } else {
-                    setScheduleStep(true);
+                    setCurrentStep(prev => prev + 1);
                   }
                 }}
-                disabled={!selectedMedication || (scheduleStep && (!schedule.dosage || !schedule.times.length))}
+                disabled={
+                  (currentStep === 0 && !selectedMedication) ||
+                  (currentStep === 1 && !schedule.dosage) ||
+                  (currentStep === 2 && !schedule.times.length)
+                }
               >
-                {scheduleStep ? 'Add' : 'Next'}
+                {currentStep === 2 ? 'Add Medication' : 'Next'}
               </Button>
             </View>
           </Modal>
         </Portal>
       </ScrollView>
+
+      <TimePickerWrapper
+        visible={timePickerVisible}
+        onDismiss={() => setTimePickerVisible(false)}
+        onConfirm={onTimeConfirm}
+      />
     </>
   );
 }
@@ -495,69 +688,167 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  modalTitle: {
-    marginBottom: 24,
-    textAlign: 'center',
+  modalHeader: {
+    alignItems: 'center',
+    paddingTop: 24,
   },
-  searchInput: {
-    marginBottom: 20,
-    backgroundColor: 'transparent',
+  modalContent: {
+    flex: 1,
   },
-  suggestionsContainer: {
-    maxHeight: 400,
-    marginBottom: 20,
-  },
-  suggestionItem: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+  modalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  selectedItem: {
-    backgroundColor: 'rgba(103, 80, 164, 0.12)',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 24,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.1)',
   },
-  modalButton: {
-    minWidth: 100,
+  suggestionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
   },
-  loading: {
-    marginVertical: 24,
+  selectedMedCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
   },
-  sectionTitle: {
-    marginTop: 24,
-    marginBottom: 12,
+  dosageContainer: {
+    padding: 16,
   },
-  chipGroup: {
+  dosageInput: {
+    marginTop: 16,
+  },
+  frequencyContainer: {
+    padding: 16,
+  },
+  chipGrid: undefined,
+  dayChip: undefined,
+  monthlyScrollContent: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  monthlyWeekContainer: {
+    marginRight: 16,
+    minWidth: 280,
+  },
+  monthlyWeekLabel: {
+    fontSize: 12,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  monthlyWeekDays: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  monthlyDate: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  monthlyDateText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  monthlyGrid: undefined,
+  monthlyChip: undefined,
+  timeChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
   },
-  chip: {
+  timeChip: {
     margin: 4,
   },
-  input: {
-    marginBottom: 24,
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  stepLine: {
+    width: 40,
+    height: 2,
+    marginHorizontal: 4,
+  },
+  searchInput: {
+    marginBottom: 16,
+    backgroundColor: 'transparent',
+  },
+  suggestionsContainer: {
+    maxHeight: 400,
+  },
+  suggestionItem: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  suggestionText: {
+    fontSize: 16,
+  },
+  checkIcon: {
+    flexShrink: 0,
+  },
+  loading: {
+    marginVertical: 24,
+  },
+  sectionTitle: {
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  daysContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  timesContainer: {
+    marginTop: 8,
+    marginBottom: 16,
   },
   addTimeButton: {
-    marginTop: 12,
-    marginBottom: 24,
+    marginTop: 8,
   },
-  monthDayChip: {
-    minWidth: 45,
-    margin: 4,
+  weeklyScrollContent: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
-  scheduleContainer: {
-    paddingBottom: 24,
+  weeklyDayButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 6,
+    borderWidth: 1,
+  },
+  weeklyDayName: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
