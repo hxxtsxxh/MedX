@@ -26,7 +26,7 @@ const LoginScreen = ({ navigation }: { navigation: NavigationProp<any> }) => {
   return (
     <LinearGradient colors={['#cadeed', '#7888d9', '#0d2f5d']}
     style={styles.container}>
-        <Image source={require('../assets/images/logo_white.png')} style={{ width: 100, height: 100, alignSelf: 'center', marginBottom: 20 }} />
+        <Image source={require('../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
         <Text style={styles.subtitle}>Your Medication Safety Companion</Text>
 
         {error ? (
@@ -119,6 +119,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 16,
     paddingHorizontal: 12,
+    width: '85%',  // Reduced from 100% to 85%
+    alignSelf: 'center',
   },
   inputIcon: {
     marginRight: 10,
@@ -136,7 +138,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
     borderWidth: 2, 
-    borderColor: 'white', 
+    borderColor: 'white',
+    width: '85%',  // Added to match input width
+    alignSelf: 'center',
   },
   loginButtonText: {
     color: 'white', 
