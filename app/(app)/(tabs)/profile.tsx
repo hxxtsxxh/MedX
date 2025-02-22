@@ -1,27 +1,60 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, Platform } from 'react-native';
+import { ScrollView, StyleSheet, View, Platform, Pressable } from 'react-native';
 import { useTheme, Text, Avatar, Switch, List, Button, Divider } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function Profile() {
   const theme = useTheme();
   const { isDark, setTheme } = useAppTheme();
   const [notifications, setNotifications] = React.useState(true);
   const [dataSharing, setDataSharing] = React.useState(false);
+  const [profileImage, setProfileImage] = React.useState<string | null>(null);
+
+  const pickImage = async () => {
+    // Request permission
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      alert('Sorry, we need camera roll permissions to update your profile picture.');
+      return;
+    }
+
+    // Pick the image
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 600 }}
+        transition={{ duration: 600 }}
         style={styles.header}
       >
-        <Avatar.Image
-          size={80}
-          source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop' }}
-        />
+        <Pressable onPress={pickImage}>
+          <Avatar.Image
+            size={80}
+            source={
+              profileImage
+                ? { uri: profileImage }
+                : require('../../../assets/default-avatar.webp')
+            }
+          />
+          <View style={styles.editIconContainer}>
+            <Text style={styles.editIcon}>📷</Text>
+          </View>
+        </Pressable>
         <Text variant="headlineMedium" style={styles.name}>John Doe</Text>
         <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
           john.doe@example.com
@@ -131,5 +164,18 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 10,
+  },
+  editIconContainer: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  editIcon: {
+    fontSize: 16,
   },
 });
