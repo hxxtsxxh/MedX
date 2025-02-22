@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import { Note } from '../types/notes';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -18,52 +18,62 @@ const NotesContext = createContext<NotesContextType>({
   loading: false,
 });
 
-export const useNotes = () => useContext(NotesContext);
-
 export function NotesProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unsubscribe, setUnsubscribe] = useState<(() => void) | null>(null);
 
-  // Set up real-time listener when auth state changes
   useEffect(() => {
-    const authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // Set up real-time listener for notes
-        const notesRef = collection(db, 'notes');
-        const q = query(
-          notesRef,
-          where('userId', '==', user.uid)
-        );
+    let unsubscribe: (() => void) | undefined;
 
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-          const loadedNotes = snapshot.docs
-            .map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as Note[];
+    const authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Clean up previous listener if exists
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = undefined;
+      }
 
-          // Sort in memory
-          loadedNotes.sort((a, b) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
+      if (!user) {
+        setNotes([]);
+        setLoading(false);
+        return;
+      }
 
-          setNotes(loadedNotes);
+      try {
+        // Ensure user document exists
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, {
+          email: user.email,
+          updatedAt: new Date()
+        }, { merge: true });
+
+        // Set up notes listener
+        const notesRef = collection(userRef, 'notes');
+        const q = query(notesRef, orderBy('createdAt', 'desc'));
+        
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const newNotes = snapshot.docs.map(doc => ({
+            id: doc.id,
+            content: doc.data().content,
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+          }));
+          setNotes(newNotes);
           setLoading(false);
         }, (error) => {
-          console.error('Error loading notes:', error);
+          // Only log error if we're still authenticated
+          if (auth.currentUser) {
+            console.error('Error loading notes:', error);
+          }
           setLoading(false);
         });
-
-        setUnsubscribe(() => unsubscribeSnapshot);
-      } else {
-        // Clear notes when user signs out
-        setNotes([]);
+      } catch (error) {
+        // Only log error if we're still authenticated
+        if (auth.currentUser) {
+          console.error('Error setting up notes listener:', error);
+        }
         setLoading(false);
       }
     });
 
-    // Cleanup function
     return () => {
       authUnsubscribe();
       if (unsubscribe) {
@@ -76,14 +86,11 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     if (!auth.currentUser) return;
     
     try {
-      const noteData = {
+      const notesRef = collection(db, 'users', auth.currentUser.uid, 'notes');
+      await addDoc(notesRef, {
         content,
-        createdAt: new Date().toISOString(),
-        userId: auth.currentUser.uid,
-      };
-      
-      await addDoc(collection(db, 'notes'), noteData);
-      // No need to update state manually as the real-time listener will handle it
+        createdAt: new Date(),
+      });
     } catch (error) {
       console.error('Error adding note:', error);
       throw error;
@@ -91,9 +98,11 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteNote = async (noteId: string) => {
+    if (!auth.currentUser) return;
+    
     try {
-      await deleteDoc(doc(db, 'notes', noteId));
-      // No need to update state manually as the real-time listener will handle it
+      const noteRef = doc(db, 'users', auth.currentUser.uid, 'notes', noteId);
+      await deleteDoc(noteRef);
     } catch (error) {
       console.error('Error deleting note:', error);
       throw error;
@@ -105,4 +114,6 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       {children}
     </NotesContext.Provider>
   );
-} 
+}
+
+export const useNotes = () => useContext(NotesContext); 
