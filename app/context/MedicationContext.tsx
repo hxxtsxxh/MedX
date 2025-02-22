@@ -4,6 +4,7 @@ import { auth, db } from '../../firebaseConfig';
 import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { showMessage } from 'react-native-flash-message';
 import { MotiView } from 'moti';
+import { scheduleMedicationNotification, requestNotificationPermissions } from '../utils/notifications';
 
 interface MedicationContextType {
   medications: Medication[];
@@ -89,6 +90,11 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     };
   }, []); // Empty dependency array since we want this to run once on mount
 
+  // Request notification permissions when the provider mounts
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
   const refreshMedications = useCallback(async () => {
     if (!auth.currentUser) {
       console.log('No user logged in during refresh'); // Debug log
@@ -133,6 +139,17 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
 
       const docRef = await addDoc(collection(db, 'medications'), medData);
       
+      // Schedule notifications for the new medication
+      if (medication.schedule) {
+        await scheduleMedicationNotification(
+          medication.brand_name,
+          medication.dosage?.toString() || '',
+          medication.schedule.times,
+          medication.schedule.days,
+          medication.schedule.frequency
+        );
+      }
+
       showMessage({
         message: "Medication Added Successfully",
         description: `${medication.brand_name} has been added to your medications`,
@@ -198,12 +215,25 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
-      const medicationRef = doc(db, 'medications', id);
-      await updateDoc(medicationRef, {
+      const docRef = doc(db, 'medications', id);
+      const updateData = {
         ...medication,
         updated_at: new Date().toISOString(),
-      });
+      };
       
+      await updateDoc(docRef, updateData);
+
+      // Reschedule notifications for the updated medication
+      if (medication.schedule) {
+        await scheduleMedicationNotification(
+          medication.brand_name,
+          medication.dosage?.toString() || '',
+          medication.schedule.times,
+          medication.schedule.days,
+          medication.schedule.frequency
+        );
+      }
+
       showMessage({
         message: "Medication Updated",
         description: `${medication.brand_name} has been updated`,
