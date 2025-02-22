@@ -689,49 +689,55 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.upcoming.length > 0 ? (
-              groupedMedications.upcoming
-                .sort((a, b) => a.daysUntil - b.daysUntil)
-                .map((med, index) => (
-                  <MotiView
-                    key={`${med.id}-upcoming`}
-                    from={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'timing', duration: 600, delay: index * 100 }}
-                    style={[
-                      styles.medicationItem,
-                      { backgroundColor: theme.colors.surfaceVariant + '10' }
-                    ]}
-                  >
-                    <View style={styles.medicationInfo}>
-                      <Text style={styles.medicationName}>{med.brand_name}</Text>
-                      <View style={styles.medicationDetails}>
-                        <Text style={styles.timeText}>
-                          {med.schedule?.times.map(displayTime).join(', ')}
+              <View style={{ 
+                backgroundColor: theme.colors.surfaceVariant + '10', 
+                borderRadius: 12,
+                paddingVertical: 12 
+              }}>
+                {groupedMedications.upcoming
+                  .sort((a, b) => a.daysUntil - b.daysUntil)
+                  .map((med, index) => (
+                    <MotiView
+                      key={`${med.id}-upcoming`}
+                      from={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ type: 'timing', duration: 600, delay: index * 100 }}
+                      style={[
+                        styles.medicationItem,
+                        { backgroundColor: theme.colors.surface }
+                      ]}
+                    >
+                      <View style={styles.medicationInfo}>
+                        <Text style={styles.medicationName}>{med.brand_name}</Text>
+                        <View style={styles.medicationDetails}>
+                          <Text style={styles.timeText}>
+                            {med.schedule?.times.map(displayTime).join(', ')}
+                          </Text>
+                          <Text style={styles.divider}>•</Text>
+                          <Text style={styles.dosageText}>
+                            {med.schedule?.dosage}
                         </Text>
-                        <Text style={styles.divider}>•</Text>
-                        <Text style={styles.dosageText}>
-                          {med.schedule?.dosage}
-                      </Text>
+                        </View>
+
+                        <Text style={styles.scheduleText}>
+                          {med.schedule?.frequency === 'weekly' 
+                            ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                            : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                        </Text>
+                        
+                        <Text 
+                          style={[styles.scheduleText, { color: theme.colors.secondary }]}
+                        >
+                          {formatDaysUntil(med.daysUntil)}
+                        </Text>
                       </View>
 
-                      <Text style={styles.scheduleText}>
-                        {med.schedule?.frequency === 'weekly' 
-                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
-                      </Text>
-                      
-                      <Text 
-                        style={[styles.scheduleText, { color: theme.colors.secondary }]}
-                      >
-                        {formatDaysUntil(med.daysUntil)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.actionsContainer}>
-                      <MedicationActions medication={med} showTakeAction={false} />
-                    </View>
-                  </MotiView>
-                ))
+                      <View style={styles.actionsContainer}>
+                        <MedicationActions medication={med} showTakeAction={false} />
+                      </View>
+                    </MotiView>
+                  ))}
+              </View>
             ) : (
               <Text variant="bodyMedium">No upcoming doses</Text>
             )}
