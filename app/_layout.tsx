@@ -8,6 +8,7 @@ import { lightTheme, darkTheme } from './constants/theme';
 import { MedicationProvider } from './context/MedicationContext';
 import React from 'react';
 import { ChatProvider } from './context/ChatContext';
+import { NotesProvider } from './context/NotesContext';
 
 declare global {
   var user: {
@@ -31,18 +32,20 @@ function RootLayoutNav() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <MedicationProvider>
-        <ChatProvider>
-          <PaperProvider theme={isDark ? darkTheme : lightTheme}>
-            <Stack screenOptions={{
-              headerShown: false,
-              animation: 'fade',
-            }}>
-              <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-              <Stack.Screen name="(app)" options={{ animation: 'slide_from_right' }} />
-            </Stack>
-            <StatusBar style={isDark ? 'light' : 'dark'} />
-          </PaperProvider>
-        </ChatProvider>
+        <NotesProvider>
+          <ChatProvider>
+            <PaperProvider theme={isDark ? darkTheme : lightTheme}>
+              <Stack screenOptions={{
+                headerShown: false,
+                animation: 'fade',
+              }}>
+                <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+                <Stack.Screen name="(app)" options={{ animation: 'slide_from_right' }} />
+              </Stack>
+              <StatusBar style={isDark ? 'light' : 'dark'} />
+            </PaperProvider>
+          </ChatProvider>
+        </NotesProvider>
       </MedicationProvider>
     </GestureHandlerRootView>
   );
