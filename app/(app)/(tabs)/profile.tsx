@@ -21,7 +21,7 @@ import * as Print from 'expo-print';
 import axios from 'axios';
 import { DailyNotes } from '../../components/DailyNotes';
 import { useNotes } from '../../context/NotesContext';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 
 const styles = StyleSheet.create({
@@ -108,7 +108,7 @@ type GeminiResponse = {
 interface EmergencyContact {
   id: string;
   name: string;
-  type: 'contact' | 'doctor' | 'emergency';
+  type: 'contact' | 'doctor' | 'emergency';  // Make this a literal union type
   phone: string;
   relation?: string;
 }
@@ -172,33 +172,30 @@ export default function Profile() {
     const docRef = doc(db, 'users', auth.currentUser.uid);
     const docSnap = await getDoc(docRef);
     
-    if (docSnap.exists()) {
+    // Create default emergency contact
+    const emergency911 = {
+      id: 'emergency-911',
+      name: 'Emergency Services',
+      type: 'emergency' as const, // Explicitly type as 'emergency'
+      phone: '911'
+    };
+    
+    if (!docSnap.exists()) {
+      // Create new document with default emergency contact
+      await setDoc(docRef, { 
+        emergencyContacts: [emergency911]
+      });
+      setEmergencyContacts([emergency911]);
+    } else {
       let contacts = docSnap.data().emergencyContacts || [];
       
       // Add 911 if no contacts exist
       if (contacts.length === 0) {
-        const emergency911 = {
-          id: 'emergency-911',
-          name: 'Emergency Services',
-          type: 'emergency',
-          phone: '911'
-        };
         contacts = [emergency911];
-        // Save the default contact
         await updateDoc(docRef, { emergencyContacts: contacts });
       }
       
       setEmergencyContacts(contacts);
-    } else {
-      // If document doesn't exist, create it with default 911
-      const emergency911 = {
-        id: 'emergency-911',
-        name: 'Emergency Services',
-        type: 'emergency',
-        phone: '911'
-      };
-      await updateDoc(docRef, { emergencyContacts: [emergency911] });
-      setEmergencyContacts([emergency911]);
     }
   };
 
@@ -297,7 +294,7 @@ export default function Profile() {
     }
 
     try {
-      let updatedContacts;
+      let updatedContacts: EmergencyContact[];
       if (editingContact) {
         // Update existing contact
         updatedContacts = emergencyContacts.map(contact => 
@@ -305,17 +302,25 @@ export default function Profile() {
         );
       } else {
         // Add new contact
-        const contact = {
+        const contact: EmergencyContact = {
           ...newContact,
           id: Date.now().toString(),
           name: newContact.type === 'emergency' ? 'Emergency Services' : newContact.name,
-          phone: newContact.type === 'emergency' ? '911' : newContact.phone.replace(/\D/g, '') // Strip non-digits for storage
+          phone: newContact.type === 'emergency' ? '911' : newContact.phone,
+          type: newContact.type
         };
         updatedContacts = [...emergencyContacts, contact];
       }
       
       const docRef = doc(db, 'users', auth.currentUser.uid);
-      await updateDoc(docRef, { emergencyContacts: updatedContacts });
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        await setDoc(docRef, { emergencyContacts: updatedContacts });
+      } else {
+        await updateDoc(docRef, { emergencyContacts: updatedContacts });
+      }
+
       setEmergencyContacts(updatedContacts);
       setContactModalVisible(false);
       setEditingContact(null);
@@ -328,6 +333,7 @@ export default function Profile() {
       });
     } catch (error) {
       console.error('Error saving contact:', error);
+      alert('Failed to save contact. Please try again.');
     }
   };
 
