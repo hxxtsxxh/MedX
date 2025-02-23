@@ -63,14 +63,11 @@ const extractNDC = (barcode: string): {
   ndc532: string;
   productNdc532: string;
 } => {
-  // Remove first digit and get remaining digits
   const digits = barcode.slice(1);
   
-  // Format as 4-4-2
   const ndc442 = `${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8, 10)}`;
   const productNdc442 = `${digits.slice(0, 4)}-${digits.slice(4, 8)}`;
 
-  // Format as 5-3-2
   const ndc532 = `${digits.slice(0, 5)}-${digits.slice(5, 8)}-${digits.slice(8, 10)}`;
   const productNdc532 = `${digits.slice(0, 5)}-${digits.slice(5, 8)}`;
   
@@ -139,19 +136,15 @@ export default function Scan() {
     }
   ];
 
-  // Add cleanup effect at the top level, right after other hooks
   useEffect(() => {
     return () => {
       if (cameraRef.current) {
-        // Note: Since pause() isn't available, we'll need a different approach
-        // We can just rely on React Native's automatic cleanup
-        // when the component unmounts
+
       }
       setPhotoUri(null);
     };
   }, []);
 
-  // First, add a useEffect to handle camera state
   useEffect(() => {
     if (manualInputVisible && cameraRef.current) {
       cameraRef.current.pausePreview();
@@ -160,7 +153,6 @@ export default function Scan() {
     }
   }, [manualInputVisible]);
 
-  // Create a debounced search function
   const debouncedSearch = useDebouncedCallback(
     async (query: string) => {
       if (!query.trim()) {
@@ -181,7 +173,7 @@ export default function Scan() {
         setIsTyping(false);
       }
     },
-    300 // 300ms delay
+    300
   );
 
   const startScan = () => {
@@ -199,7 +191,6 @@ export default function Scan() {
     }, 500);
   };
 
-  // Update the search handler
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     setIsTyping(true);
@@ -209,7 +200,6 @@ export default function Scan() {
   const handleAddMedication = async () => {
     if (selectedMedication && schedule.dosage && schedule.times.length > 0) {
       try {
-        // Create a complete medication object with schedule
         const medicationWithSchedule = {
           ...selectedMedication,
           schedule: {
@@ -224,7 +214,6 @@ export default function Scan() {
         await addMedication(medicationWithSchedule);
         setShowSuccess(true);
         handleCloseManualInput();
-        // Reset camera state
         if (cameraRef.current) {
           cameraRef.current.resumePreview();
         }
@@ -553,7 +542,6 @@ export default function Scan() {
     }
   };
 
-  // Handle camera permissions
   if (!permission) {
     return (
       <View style={styles.container}>
@@ -580,7 +568,6 @@ export default function Scan() {
       cameraRef.current.pausePreview();
     }
     
-    // Show alert only if not already showing
     if (!isAlertShowing) {
       setIsAlertShowing(true);
       Alert.alert(
@@ -596,7 +583,7 @@ export default function Scan() {
             }
           }
         }],
-        { cancelable: false } // Prevent dismissing by tapping outside
+        { cancelable: false } 
       );
     }
   };

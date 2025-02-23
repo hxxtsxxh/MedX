@@ -109,7 +109,7 @@ const MEDICAL_PROMPT = {
 };
 
 let TODAY = new Date();
-TODAY.setHours(0, 0, 0, 0);  // Set to midnight
+TODAY.setHours(0, 0, 0, 0); 
 
 // Reset TODAY at midnight
 setInterval(() => {
@@ -118,8 +118,7 @@ setInterval(() => {
     TODAY = new Date();
     TODAY.setHours(0, 0, 0, 0);
   }
-}, 60000); // Check every minute
-
+}, 60000); 
 function getMedicationsForDate(medications: Medication[], targetDate: Date): Medication[] {
   const targetDay = targetDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const targetDayOfMonth = targetDate.getDate().toString();
@@ -136,13 +135,11 @@ function getMedicationsForDate(medications: Medication[], targetDate: Date): Med
 }
 
 function formatMedicationContext(medications: Medication[], userName: string) {
-  // Use the consistent TODAY date
   const scheduleInfo = Array.from({ length: 4 }).map((_, index) => {
     const date = new Date(TODAY);
     date.setDate(TODAY.getDate() + index);
     const meds = getMedicationsForDate(medications, date);
-    
-    // Group medications by time
+
     const medsByTime = meds.reduce((acc, med) => {
       if (!med.schedule?.times) return acc;
       
@@ -156,7 +153,6 @@ function formatMedicationContext(medications: Medication[], userName: string) {
       return acc;
     }, {} as Record<string, Array<{name: string, dosage: string}>>);
 
-    // Sort times and format schedule
     const sortedTimes = Object.keys(medsByTime).sort((a, b) => {
       const [aHour, aMin] = a.split(':').map(Number);
       const [bHour, bMin] = b.split(':').map(Number);
@@ -190,7 +186,6 @@ function formatMedicationContext(medications: Medication[], userName: string) {
   }];
 }
 
-// Convert ChatMessage to Gemini API format
 function convertToGeminiFormat(message: ChatMessage) {
   return {
     role: message.role === 'user' ? 'user' : 'model',
@@ -205,10 +200,8 @@ export async function processChatMessage(
   userName: string
 ) {
   try {
-    // Format medication context
     const medicationContext = formatMedicationContext(medications, userName);
 
-    // Convert chat history to Gemini format
     const formattedHistory = chatHistory.map(convertToGeminiFormat);
 
     const response = await axios.post(API_URL, {

@@ -11,7 +11,6 @@ import { useNotificationHandler } from '../utils/notificationHandler';
 export default function AppLayout() {
   const { isDark } = useTheme();
 
-  // Set up notification handling
   useNotificationHandler();
 
   return (

@@ -14,10 +14,8 @@ export default function SignUp(){
   const [error, setError] = useState<string | null>(null);
 
   const handleSignup = async () => {
-    // Clear any previous errors
     setError(null);
 
-    // Validate all required fields
     if (!name.trim()) {
       setError('Please enter your full name to continue.');
       return;
@@ -234,7 +232,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     color: '#fff',
     marginBottom: 8,
-    marginLeft: '7.5%', // To align with input container
+    marginLeft: '7.5%',
     fontSize: 16,
   }
 });

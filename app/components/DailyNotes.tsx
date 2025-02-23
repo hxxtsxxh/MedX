@@ -80,7 +80,7 @@ export function DailyNotes() {
           }}
           outlineColor={theme.colors.primary}
           activeOutlineColor={theme.colors.primary}
-          placeholderTextColor={theme.colors.primary + '80'} // 50% opacity
+          placeholderTextColor={theme.colors.primary + '80'}
         />
         <Button
           mode="contained"
