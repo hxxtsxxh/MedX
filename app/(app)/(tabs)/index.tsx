@@ -356,12 +356,12 @@ export default function Home() {
             styles.actionCard,
             { 
               backgroundColor: theme.colors.tertiaryContainer,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.8 : 1,
             }
           ]}
         >
-          <Ionicons name="notifications-outline" size={24} color={theme.colors.tertiary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Reminder Settings</Text>
+          <Ionicons name="settings-outline" size={24} color={theme.colors.tertiary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Settings</Text>
         </Pressable>
 
         <Pressable
