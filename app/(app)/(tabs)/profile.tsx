@@ -808,17 +808,6 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
             />
           )}
         />
-        
-        <List.Item
-          title="Notifications"
-          left={props => <List.Icon {...props} icon="bell" />}
-          right={() => (
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-            />
-          )}
-        />
 
         <Divider />
 
