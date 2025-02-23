@@ -49,6 +49,11 @@ npm install  # or yarn install
 1. Create a Firebase project in Firebase Console.
 4. Add your Firebase configuration in `firebaseConfig.js`.
 
+## Setting Up Other APIs
+
+1. Visit aistudio.google.com for Gemini API
+2. Visit open.fda.gov/apis for OpenFDA API
+
 ## Running the App
 
 ### On a Physical Device (Recommended)
