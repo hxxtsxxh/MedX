@@ -98,7 +98,7 @@ export default function PrivacySettings() {
         </Text>
         <TextInput
           mode="outlined"
-          label="Current Password"
+          placeholder="Current Password"
           value={currentPassword}
           onChangeText={setCurrentPassword}
           secureTextEntry
@@ -108,7 +108,7 @@ export default function PrivacySettings() {
         />
         <TextInput
           mode="outlined"
-          label="New Password"
+          placeholder="New Password"
           value={newPassword}
           onChangeText={setNewPassword}
           secureTextEntry
@@ -118,7 +118,7 @@ export default function PrivacySettings() {
         />
         <TextInput
           mode="outlined"
-          label="Confirm New Password"
+          placeholder="Confirm New Password"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
