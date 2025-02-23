@@ -88,10 +88,17 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: '#374151',
   },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
   sectionTitle: {
     fontSize: 18,
     marginTop: 18,
     marginBottom: 12,
+    fontWeight: '600',
   },
   inputGroup: {
     gap: 20,
@@ -513,12 +520,41 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
         {
           contents: [{
+            role: 'user',
             parts: [{
               text: prompt
             }]
-          }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
         }
       );
+
+      if (!response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error('Invalid response format from Gemini API');
+      }
 
       const content = response.data.candidates[0].content.parts[0].text
         .replace(/```/g, '')
@@ -528,6 +564,9 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
       return content;
     } catch (error) {
       console.error('Error generating report with Gemini:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('API Error details:', error.response?.data);
+      }
       throw new Error('Failed to generate medication report');
     }
   };
@@ -1089,17 +1128,19 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
           ]}
         >
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text variant="titleLarge" style={[styles.bottomSheetTitle, { fontSize: 22 }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.primary }]}>
               Medical Information
             </Text>
 
-            <Text variant="titleMedium" style={[styles.sectionTitle]}>
+            <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
               Basic Information
             </Text>
 
             <View style={styles.inputGroup}>
               <View>
-                <Text style={styles.medicalLabel}>Age</Text>
+                <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
+                  Age
+                </Text>
                 <TextInput
                   mode="outlined"
                   value={medicalInfo.age}
@@ -1107,12 +1148,15 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                   keyboardType="numeric"
                   style={styles.medicalInput}
                   outlineStyle={{ borderRadius: 8 }}
+                  textColor="#000000"
                   dense
                 />
               </View>
 
               <View>
-                <Text style={styles.medicalLabel}>Weight</Text>
+                <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
+                  Weight
+                </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TextInput
                     mode="outlined"
@@ -1123,13 +1167,16 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                     outlineStyle={{ borderRadius: 8 }}
                     placeholder="Enter weight"
                     dense
+                    textColor="#000000"
                   />
                   <Text style={styles.unitText}>lbs</Text>
                 </View>
               </View>
 
               <View>
-                <Text style={styles.medicalLabel}>Height</Text>
+                <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
+                  Height
+                </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                     <TextInput
@@ -1149,6 +1196,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                       placeholder="0"
                       maxLength={1}
                       dense
+                      textColor="#000000"
                     />
                     <Text style={styles.unitText}>ft</Text>
                   </View>
@@ -1170,26 +1218,30 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                       placeholder="0"
                       maxLength={2}
                       dense
+                      textColor="#000000"
                     />
                     <Text style={styles.unitText}>in</Text>
                   </View>
                 </View>
               </View>
 
-              <View>
-                <Text style={styles.medicalLabel}>Blood Type</Text>
+              <View style={{ marginBottom: 15 }}>
+                <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
+                  Blood Type
+                </Text>
                 <TextInput
                   mode="outlined"
                   value={medicalInfo.bloodType}
                   onChangeText={(text) => setMedicalInfo(prev => ({ ...prev, bloodType: text }))}
                   style={styles.medicalInput}
                   outlineStyle={{ borderRadius: 8 }}
+                  textColor="#000000"
                   dense
                 />
               </View>
             </View>
 
-            <Text variant="titleMedium" style={[styles.medicalLabel, { marginTop: 8 }]}>
+            <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
               Allergies
             </Text>
             <View style={{ marginBottom: 0 }}>
@@ -1200,6 +1252,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                 onChangeText={setNewAllergy}
                 style={[styles.medicalInput, { marginBottom: 8 }]}
                 outlineStyle={{ borderRadius: 8 }}
+                textColor="#000000"
                 right={
                   <TextInput.Icon
                     icon="plus"
@@ -1233,7 +1286,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
               </View>
             </View>
 
-            <Text variant="titleMedium" style={[styles.medicalLabel, { marginTop: 8 }]}>
+            <Text style={[styles.medicalLabel, { color: theme.colors.onSurface }]}>
               Medical Conditions
             </Text>
             <View style={{ marginBottom: 0 }}>
@@ -1244,6 +1297,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                 onChangeText={setNewCondition}
                 style={[styles.medicalInput, { marginBottom: 8 }]}
                 outlineStyle={{ borderRadius: 8 }}
+                textColor="#000000"
                 right={
                   <TextInput.Icon
                     icon="plus"

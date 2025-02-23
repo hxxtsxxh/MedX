@@ -33,3 +33,5 @@ export function useNotificationHandler() {
     };
   }, []);
 } 
+
+export default useNotificationHandler;

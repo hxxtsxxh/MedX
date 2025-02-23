@@ -117,3 +117,5 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
 } 
 
 export const useNotes = () => useContext(NotesContext); 
+
+export default NotesContext;
