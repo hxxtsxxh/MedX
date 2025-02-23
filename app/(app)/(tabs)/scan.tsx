@@ -651,6 +651,82 @@ export default function Scan() {
     </View>
   );
 
+  const handleManualInputOpen = () => {
+    setManualInputVisible(true);
+    if (cameraRef.current) {
+      cameraRef.current.pausePreview();
+    }
+    
+    // Show alert only if not already showing
+    if (!isAlertShowing) {
+      setIsAlertShowing(true);
+      Alert.alert(
+        'Invalid Barcode',
+        'This barcode is not recognized as a valid medication. Please try a different barcode or enter details manually.',
+        [{ 
+          text: 'OK',
+          onPress: () => {
+            setIsAlertShowing(false);
+            setIsScanning(true);
+            if (cameraRef.current) {
+              cameraRef.current.resumePreview();
+            }
+          }
+        }],
+        { cancelable: false } // Prevent dismissing by tapping outside
+      );
+    }
+  };
+
+  const renderCamera = () => (
+    <View style={styles.cameraContainer}>
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        onBarcodeScanned={(!isScanning || isAlertShowing) ? undefined : async (result: BarCodeScanningResult) => {
+          setIsScanning(false);
+          
+          try {
+            const { productNdc442, productNdc532 } = extractNDC(result.data);
+            let details = await fetchMedicationDetails(productNdc442);
+            if (details.brandName === 'Error') {
+              details = await fetchMedicationDetails(productNdc532);
+            }
+            
+            if (details.brandName !== 'Error' && details.brandName !== 'Not found') {
+              const scannedMedication: Medication = {
+                id: result.data,
+                brand_name: details.brandName,
+                generic_name: details.genericName,
+                product_ndc: productNdc442,
+                dosage_form: '',
+              };
+              
+              setSelectedMedication(scannedMedication);
+              setCurrentStep(1);
+              setManualInputVisible(true);
+            } else {
+              handleInvalidBarcode();
+            }
+          } catch (error) {
+            handleInvalidBarcode();
+          }
+        }}
+      >
+        <View style={[
+          StyleSheet.absoluteFill,
+          styles.cameraOverlay,
+          { backgroundColor: manualInputVisible ? 'rgba(0,0,0,0.8)' : 'transparent' }
+        ]}>
+          {!manualInputVisible && (
+            <Text style={styles.overlayText}>
+              Scan medication barcode
+            </Text>
+          )}
+        </View>
+      </CameraView>
+    </View>
+  );
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <SuccessAnimation 
