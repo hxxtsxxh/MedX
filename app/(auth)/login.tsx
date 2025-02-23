@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, Platform, Image, ImageComponent } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert, Platform, Image, ImageComponent, ImageBackground } from 'react-native';
 import { Link, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,20 +22,37 @@ export default function Login() {
   };
 
   return (
-    <LinearGradient colors={['#cadeed', '#7888d9', '#0d2f5d']}
-    style={styles.container}>
-        <Image source={require('../../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
-        <Text style={styles.subtitle}>Your Medication Safety Companion</Text>
+    <ImageBackground 
+      source={require('../../assets/images/Background.png')} 
+      style={{ 
+        flex: 1,
+        width: '100%',
+      }}
+      resizeMode="cover"
+    >
+      <View style={[
+        styles.container, 
+        { 
+          backgroundColor: 'transparent',  // Make container transparent to show background
+          padding: 20,
+        }
+      ]}>
+        <Image 
+          source={require('../../assets/images/logo_dark.png')} 
+          style={{ width: 250, height: 250, alignSelf: 'center' }} 
+        />
+        <Text style={[styles.subtitle, { color: '#333' }]}>Your Medication Safety Companion</Text>
 
         {error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : null}
 
         <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+          <Ionicons name="mail-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder="Enter your email"
+            placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -44,10 +61,11 @@ export default function Login() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+          <Ionicons name="lock-closed-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Enter your password"
+            placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -66,7 +84,8 @@ export default function Login() {
             </TouchableOpacity>
           </Link>
         </View>
-    </LinearGradient>
+      </View>
+    </ImageBackground>
   );
 };
 
@@ -102,7 +121,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#cadeed',
+    color: '#0D2F5D',
     textAlign: 'center',
     marginBottom: 30,
   },
@@ -119,31 +138,33 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 16,
     paddingHorizontal: 12,
-    width: '85%',  // Reduced from 100% to 85%
+    width: '85%',
     alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#0D2F5D',
   },
   inputIcon: {
     marginRight: 10,
+    color: '#0D2F5D',
   },
   input: {
     flex: 1,
     height: 50,
-    color: '#333',
+    color: '#0D2F5D',
   },
   loginButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#0D2F5D',
     borderRadius: 10,
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    borderWidth: 2, 
-    borderColor: 'white',
-    width: '85%',  // Added to match input width
+    width: '85%',
     alignSelf: 'center',
+    borderWidth: 0,
   },
   loginButtonText: {
-    color: 'white', 
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -167,10 +188,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   footerText: {
-    color: '#fff',
+    color: '#0D2F5D',
   },
   signupLink: {
-    color: '#78a8d9',
+    color: '#0D2F5D',
     fontWeight: '600',
   },
 });
