@@ -14,10 +14,10 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerTitle: '',
         headerLeft: () => (
-          pathname === '/profile' ? null : (
+          route.name !== 'scan' && route.name !== 'profile' ? (
             <Pressable onPress={() => router.push('/profile')}>
               <Avatar.Image
                 size={45}
@@ -32,13 +32,13 @@ export default function TabLayout() {
                 }
               />
             </Pressable>
-          )
+          ) : null
         ),
         headerStyle: {
           backgroundColor: theme.dark 
-            ? 'rgba(18, 18, 18, 0.7)'  // Dark semi-transparent
+            ? 'rgba(32, 37, 45,0.9)'  // Completely transparent in dark mode
             : 'rgba(255, 255, 255, 0.7)',  // Light semi-transparent
-          height: pathname === '/profile' ? 110 : 120,
+          height: route.name === 'scan' ? 0 : route.name === 'profile' ? 110 : 120,
           elevation: 0,
           shadowOpacity: 0,
         },
@@ -50,7 +50,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.colors.primary,
         headerTintColor: theme.colors.onSurface,
         headerTransparent: true,
-      }}
+      })}
     >
       <Tabs.Screen
         name="index"
