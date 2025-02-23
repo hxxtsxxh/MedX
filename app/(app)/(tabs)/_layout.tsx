@@ -36,7 +36,7 @@ export default function TabLayout() {
         ),
         headerStyle: {
           backgroundColor: theme.dark 
-            ? 'rgba(18, 18, 18, 0.7)'  // Dark semi-transparent
+            ? 'rgba(32, 37, 45,0.9)'  // Completely transparent in dark mode
             : 'rgba(255, 255, 255, 0.7)',  // Light semi-transparent
           height: route.name === 'scan' ? 0 : route.name === 'profile' ? 110 : 120,
           elevation: 0,

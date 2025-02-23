@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View, ActivityIndicator, ImageBackground } from 'react-native';
 import { useTheme, Text, Card, Chip, Surface, IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useMedications } from '../../context/MedicationContext';
@@ -23,6 +23,18 @@ interface DrugInteraction {
   severity: InteractionSeverity;
   recommendation: string;
   dosageImpact?: string;
+}
+
+interface Medication {
+  id: string;
+  brand_name: string;
+  generic_name: string;
+  dosage_form: string;
+  schedule?: {
+    dosage: string;
+    frequency: string;
+    times: string[];
+  };
 }
 
 const styles = StyleSheet.create({
@@ -344,121 +356,120 @@ If no interactions exist, return [].`;
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <MotiView
-        from={{ opacity: 0, translateY: 20 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-      >
-        <View>
-          <Text variant="headlineMedium">
+    <View style={{ flex: 1 }}>
+      <ImageBackground
+        source={theme.dark 
+          ? require('../../../assets/images/Dark_Background.png') 
+          : require('../../../assets/images/Background.png')}
+        style={{ flex: 1, position: 'absolute', width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
+      <ScrollView style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          style={styles.header}
+        >
+          <Text variant="headlineMedium" style={{ color: theme.colors.primary }}>
             Drug Interaction
           </Text>
           <Text 
             variant="bodyLarge" 
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            Check potential interactions
-          </Text>
-        </View>
-        <IconButton
-          icon="refresh"
-          size={24}
-          mode="contained"
-          onPress={handleRefresh}
-          loading={isRefreshing}
-          style={{ marginLeft: 8 }}
-        />
-      </MotiView>
-      
-      {interactions.length === 0 ? (
-        <MotiView
-          from={{ opacity: 0, translateY: 20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'timing', duration: 500 }}
-          style={styles.noInteractions}
-        >
-          <Text variant="titleMedium">No Known Interactions</Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 8 }}>
-            Your current medications appear to be safe to take together
+            Check potential interactions between your medications
           </Text>
         </MotiView>
-      ) : (
-        <View style={styles.interactionsContainer}>
-          {interactions
-            .sort((a, b) => getSeverityRank(a.severity) - getSeverityRank(b.severity))
-            .map((interaction, index) => (
-              <MotiView
-                key={index}
-                from={{ opacity: 0, translateY: 20 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ type: 'timing', duration: 500, delay: index * 100 }}
-              >
-                <Surface
-                  style={[
-                    styles.interactionCard,
-                    { backgroundColor: theme.colors.surface }
-                  ]}
-                  elevation={1}
+        
+        {interactions.length === 0 ? (
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 500 }}
+            style={styles.noInteractions}
+          >
+            <Text variant="titleMedium">No Known Interactions</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 8 }}>
+              Your current medications appear to be safe to take together
+            </Text>
+          </MotiView>
+        ) : (
+          <View style={styles.interactionsContainer}>
+            {interactions
+              .sort((a, b) => getSeverityRank(a.severity) - getSeverityRank(b.severity))
+              .map((interaction, index) => (
+                <MotiView
+                  key={index}
+                  from={{ opacity: 0, translateY: 20 }}
+                  animate={{ opacity: 1, translateY: 0 }}
+                  transition={{ type: 'timing', duration: 500, delay: index * 100 }}
                 >
-                  <View style={styles.cardWrapper}>
-                    <View style={styles.cardContent}>
-                      <View style={styles.severityContainer}>
-                        <Chip
-                          style={{ backgroundColor: getSeverityBackground(interaction.severity) }}
-                          textStyle={{ color: getSeverityColor(interaction.severity) }}
-                        >
-                          {interaction.severity} RISK
-                        </Chip>
-                      </View>
-
-                      <View style={styles.medicationsContainer}>
-                        {interaction.medications.map((med, idx) => (
+                  <Surface
+                    style={[
+                      styles.interactionCard,
+                      { backgroundColor: theme.colors.surface }
+                    ]}
+                    elevation={1}
+                  >
+                    <View style={styles.cardWrapper}>
+                      <View style={styles.cardContent}>
+                        <View style={styles.severityContainer}>
                           <Chip
-                            key={idx}
-                            style={styles.medicationChip}
-                            textStyle={{ color: theme.colors.onSurfaceVariant }}
+                            style={{ backgroundColor: getSeverityBackground(interaction.severity) }}
+                            textStyle={{ color: getSeverityColor(interaction.severity) }}
                           >
-                            {med}
+                            {interaction.severity} RISK
                           </Chip>
-                        ))}
-                      </View>
-
-                      <View style={styles.infoContainer}>
-                        <View style={styles.infoSection}>
-                          <Text style={[styles.infoTitle, { color: theme.colors.primary }]}>Description:</Text>
-                          <Text style={[styles.infoText, { color: theme.colors.onSurface }]}>
-                            {interaction.description}
-                          </Text>
                         </View>
-                        
-                        {interaction.dosageImpact && (
+
+                        <View style={styles.medicationsContainer}>
+                          {interaction.medications.map((med, idx) => (
+                            <Chip
+                              key={idx}
+                              style={styles.medicationChip}
+                              textStyle={{ color: theme.colors.onSurfaceVariant }}
+                            >
+                              {med}
+                            </Chip>
+                          ))}
+                        </View>
+
+                        <View style={styles.infoContainer}>
                           <View style={styles.infoSection}>
-                            <Text style={[styles.infoTitle, { color: theme.colors.primary }]}>
-                              Dosage Impact:
-                            </Text>
+                            <Text style={[styles.infoTitle, { color: theme.colors.primary }]}>Description:</Text>
                             <Text style={[styles.infoText, { color: theme.colors.onSurface }]}>
-                              {interaction.dosageImpact}
+                              {interaction.description}
                             </Text>
                           </View>
-                        )}
-                        
-                        <View style={styles.infoSection}>
-                          <Text style={[styles.infoTitle, { color: theme.colors.primary }]}>
-                            Recommendation:
-                          </Text>
-                          <Text style={[styles.infoText, { color: theme.colors.onSurface }]}>
-                            {interaction.recommendation}
-                          </Text>
+                          
+                          {interaction.dosageImpact && (
+                            <View style={styles.infoSection}>
+                              <Text style={[styles.infoTitle, { color: theme.colors.primary }]}>
+                                Dosage Impact:
+                              </Text>
+                              <Text style={[styles.infoText, { color: theme.colors.onSurface }]}>
+                                {interaction.dosageImpact}
+                              </Text>
+                            </View>
+                          )}
+                          
+                          <View style={styles.infoSection}>
+                            <Text style={[styles.infoTitle, { color: theme.colors.primary }]}>
+                              Recommendation:
+                            </Text>
+                            <Text style={[styles.infoText, { color: theme.colors.onSurface }]}>
+                              {interaction.recommendation}
+                            </Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-                  </View>
-                </Surface>
-              </MotiView>
-            ))}
-        </View>
-      )}
-    </ScrollView>
+                  </Surface>
+                </MotiView>
+              ))}
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
