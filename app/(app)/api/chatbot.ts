@@ -16,6 +16,12 @@ interface ChatRequest {
   message: string;
 }
 
+interface DrugInfo {
+  name: string;
+  generic_name: string;
+  dosage_form: string;
+}
+
 const API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
 
@@ -222,6 +228,78 @@ export async function processChatMessage(
       console.error('API Error:', error.response?.data);
     }
     throw error;
+  }
+}
+
+export async function generateDrugInteractionResponse(medications: Medication[]): Promise<string> {
+  const API_KEY = API_KEY; // Use the existing API_KEY constant
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
+
+  // Format medications into a more detailed structure
+  const drugList = medications.map((med): DrugInfo => ({
+    name: med.brand_name,
+    generic_name: med.generic_name,
+    dosage_form: med.dosage_form
+  }));
+
+  const prompt = `As a pharmacist, analyze potential drug interactions between these medications:
+${drugList.map(drug => `- ${drug.name} (${drug.generic_name}) - ${drug.dosage_form}`).join('\n')}
+
+Please consider:
+1. The active ingredients (generic names) of each medication
+2. The dosage forms and how they might affect drug absorption and interactions
+3. Any specific concerns based on the route of administration
+4. Both pharmacokinetic and pharmacodynamic interactions
+5. Severity levels of potential interactions
+
+Provide a detailed but clear explanation of any potential interactions, risks, or safety concerns.`;
+
+  try {
+    const response = await axios.post(API_URL, {
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        }
+      ]
+    });
+
+    // Handle the response properly
+    if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return response.data.candidates[0].content.parts[0].text;
+    } else {
+      console.error('Unexpected API response structure:', response.data);
+      return "I apologize, but I'm unable to analyze the drug interactions at the moment. Please consult with your healthcare provider.";
+    }
+  } catch (error) {
+    console.error('Error calling Gemini API:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('API Error details:', error.response?.data);
+    }
+    return "I apologize, but I'm unable to analyze the drug interactions at the moment. Please consult with your healthcare provider.";
   }
 }
 
