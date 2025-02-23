@@ -110,6 +110,7 @@ export default function Interactions() {
   const { medications } = useMedications();
   const [loading, setLoading] = useState(false);
   const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const analyzeInteractions = async () => {
     if (medications.length <= 1) {
@@ -309,6 +310,15 @@ If no interactions exist, return [].`;
     </MotiView>
   );
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await analyzeInteractions();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -338,17 +348,27 @@ If no interactions exist, return [].`;
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        style={styles.header}
+        style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
       >
-        <Text variant="headlineMedium">
-          Drug Interaction
-        </Text>
-        <Text 
-          variant="bodyLarge" 
-          style={{ color: theme.colors.onSurfaceVariant }}
-        >
-          Check potential interactions between your medications
-        </Text>
+        <View>
+          <Text variant="headlineMedium">
+            Drug Interaction
+          </Text>
+          <Text 
+            variant="bodyLarge" 
+            style={{ color: theme.colors.onSurfaceVariant }}
+          >
+            Check potential interactions
+          </Text>
+        </View>
+        <IconButton
+          icon="refresh"
+          size={24}
+          mode="contained"
+          onPress={handleRefresh}
+          loading={isRefreshing}
+          style={{ marginLeft: 8 }}
+        />
       </MotiView>
       
       {interactions.length === 0 ? (
