@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Medication } from './medications';
 import { displayTime } from '../../utils/formatters';
 import { format } from 'date-fns';
+import { GEMINI_API_KEY } from '@env'
 
 export interface ChatMessage {
   role: 'user' | 'bot';
@@ -22,7 +23,9 @@ interface DrugInfo {
   dosage_form: string;
 }
 
-const API_KEY = process.env.GEMINI_API_KEY;
+
+const API_KEY = GEMINI_API_KEY;
+
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
 
 const MEDICAL_PROMPT = {
@@ -232,7 +235,7 @@ export async function processChatMessage(
 }
 
 export async function generateDrugInteractionResponse(medications: Medication[]): Promise<string> {
-  const API_KEY = API_KEY; // Use the existing API_KEY constant
+  const API_KEY = GEMINI_API_KEY; // Use the existing API_KEY constant
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
 
   // Format medications into a more detailed structure
