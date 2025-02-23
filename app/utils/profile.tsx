@@ -1,3 +1,4 @@
+
 import { setNotificationsEnabled, getNotificationsEnabled } from '../utils/notificationSettings';
 
 export default function Profile() {

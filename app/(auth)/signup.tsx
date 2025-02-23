@@ -14,8 +14,32 @@ export default function SignUp(){
   const [error, setError] = useState<string | null>(null);
 
   const handleSignup = async () => {
+    // Clear any previous errors
+    setError(null);
+
+    // Validate all required fields
+    if (!name.trim()) {
+      setError('Please enter your full name to continue.');
+      return;
+    }
+
+    if (!email.trim()) {
+      setError('Please enter your email address to continue.');
+      return;
+    }
+
+    if (!password) {
+      setError('Please create a password to continue.');
+      return;
+    }
+
+    if (!confirmPassword) {
+      setError('Please confirm your password to continue.');
+      return;
+    }
+
     if (password !== confirmPassword) {
-      setError('Passwords do not match. Please try again.');
+      setError('Passwords do not match. Please make sure both passwords are the same.');
       return;
     }
     
@@ -25,8 +49,16 @@ export default function SignUp(){
         displayName: name
       });
       router.replace('/(app)/(tabs)')
-    } catch (error) {
-      setError((error as any).message);
+    } catch (error: any) {
+      if (error.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please try signing in instead.');
+      } else if (error.code === 'auth/weak-password') {
+        setError('Please choose a stronger password. It should be at least 6 characters long.');
+      } else {
+        setError('Unable to create account. Please check your connection and try again.');
+      }
     }
   };
 
@@ -62,9 +94,6 @@ export default function SignUp(){
             autoCapitalize="words"
           />
         </View>
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : null}
 
         <View style={styles.inputContainer}>
           <Ionicons name="mail-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
@@ -103,13 +132,23 @@ export default function SignUp(){
           />
         </View>
 
-        <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+        <View style={styles.errorContainer}>
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
+        </View>
+
+        <TouchableOpacity 
+          style={styles.signupButton} 
+          onPress={handleSignup}
+          disabled={false}
+        >
           <Text style={styles.signupButtonText}>Create Account</Text>
         </TouchableOpacity>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <Link href="/login" asChild>
+          <Link href="/login" replace asChild>
             <TouchableOpacity>
               <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
@@ -132,10 +171,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 30,
   },
+  errorContainer: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
   errorText: {
-    color: '#B00020',
+    color: '#FF9494',
     textAlign: 'center',
-    marginBottom: 16,
     fontSize: 14,
   },
   inputContainer: {
@@ -187,4 +231,10 @@ const styles = StyleSheet.create({
     color: '#0D2F5D',
     fontWeight: '600',
   },
+  inputLabel: {
+    color: '#fff',
+    marginBottom: 8,
+    marginLeft: '7.5%', // To align with input container
+    fontSize: 16,
+  }
 });
