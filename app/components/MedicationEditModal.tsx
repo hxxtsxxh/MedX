@@ -221,25 +221,28 @@ export const MedicationEditModal = ({ visible, onDismiss, medication, onDelete }
         </ScrollView>
 
         <View style={styles.actions}>
-          <Button
-            mode="outlined"
+          <Button 
+            mode="outlined" 
             onPress={onDismiss}
             style={styles.button}
+            labelStyle={{ fontSize: 13 }}
           >
             Cancel
           </Button>
-          <Button
-            mode="contained"
+          <Button 
+            mode="contained" 
             onPress={onDelete}
             style={styles.button}
             buttonColor={theme.colors.error}
+            labelStyle={{ fontSize: 13 }}
           >
             Delete
           </Button>
-          <Button
+          <Button 
             mode="contained"
             onPress={handleSave}
             style={styles.button}
+            labelStyle={{ fontSize: 13 }}
           >
             Save
           </Button>
@@ -260,7 +263,7 @@ const styles = StyleSheet.create({
     padding: 20,
     margin: 20,
     borderRadius: 12,
-    maxHeight: '90%',
+    maxHeight: '100%',
   },
   title: {
     marginBottom: 20,
@@ -270,23 +273,23 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   sectionTitle: {
-    marginTop: 16,
+    marginTop: 15,
     marginBottom: 8,
   },
   input: {
-    marginBottom: 16,
+    marginBottom: 15,
   },
   frequencyButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 15,
     gap: 8,
   },
   frequencyButton: {
     flex: 1,
   },
   daysContainer: {
-    marginBottom: 16,
+    marginBottom: 15,
   },
   weekDaysRow: {
     flexDirection: 'row',
@@ -309,16 +312,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chip: {
-    margin: 4,
+    margin: 5,
   },
   addTimeButton: {
-    marginTop: 8,
+    marginTop: 5,
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: 24,
+    marginTop: 20,
   },
   button: {
     flex: 1,
@@ -333,7 +336,7 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   dayText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
 });
