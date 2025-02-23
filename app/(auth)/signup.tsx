@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, Image, ImageBackground } from 'react-native';
 import { Link, router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,16 +63,31 @@ export default function SignUp(){
   };
 
   return (
-    <LinearGradient colors={['#cadeed', '#7888d9', '#0d2f5d']}
-    style={styles.container}>
-        <Image source={require('../../assets/images/logo_white.png')} style={{ width: 250, height: 250, alignSelf: 'center' }} />
-        <Text style={styles.subtitle}>Your Medication Safety Companion</Text>
-        
+    <ImageBackground 
+      source={require('../../assets/images/Background.png')} 
+      style={{ 
+        flex: 1,
+        width: '100%',
+      }}
+      resizeMode="cover"
+    >
+      <View style={[
+        styles.container, 
+        { 
+          backgroundColor: 'transparent',  // Make container transparent to show background
+          padding: 20,
+        }
+      ]}>
+        <Image 
+          source={require('../../assets/images/logo_dark.png')} 
+          style={{ width: 250, height: 250, alignSelf: 'center' }} 
+        />
+        <Text style={[styles.subtitle, { color: '#0D2F5D' }]}>Your Medication Safety Companion</Text>
         <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+          <Ionicons name="person-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Full Name"
+            placeholder="Enter your full name"
             placeholderTextColor="#999"
             value={name}
             onChangeText={setName}
@@ -81,10 +96,10 @@ export default function SignUp(){
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+          <Ionicons name="mail-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder="Enter your email"
             placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
@@ -94,10 +109,10 @@ export default function SignUp(){
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+          <Ionicons name="lock-closed-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Create a password"
             placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
@@ -106,10 +121,10 @@ export default function SignUp(){
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="shield-checkmark-outline" size={20} color="#666" style={styles.inputIcon} />
+          <Ionicons name="shield-checkmark-outline" size={20} color="#0D2F5D" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Confirm Password"
+            placeholder="Confirm your password"
             placeholderTextColor="#999"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -139,7 +154,8 @@ export default function SignUp(){
             </TouchableOpacity>
           </Link>
         </View>
-    </LinearGradient>
+      </View>
+    </ImageBackground>
   );
 };
 
@@ -151,7 +167,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#cadeed',
+    color: '#0D2F5D',
     textAlign: 'center',
     marginBottom: 30,
   },
@@ -173,31 +189,33 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 16,
     paddingHorizontal: 12,
-    width: '85%',  // Reduced from 100% to 85%
+    width: '85%',
     alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#0D2F5D',
   },
   inputIcon: {
     marginRight: 10,
+    color: '#0D2F5D',
   },
   input: {
     flex: 1,
     height: 50,
-    color: '#333',
+    color: '#0D2F5D',
   },
   signupButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#0D2F5D',
     borderRadius: 10,
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    borderWidth: 2, 
-    borderColor: 'white',
-    width: '85%',  // Added to match input width
+    width: '85%',
     alignSelf: 'center',
+    borderWidth: 0,
   },
   signupButtonText: {
-    color: 'white', 
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -207,10 +225,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   footerText: {
-    color: '#fff',
+    color: '#0D2F5D',
   },
   loginLink: {
-    color: '#78a8d9',
+    color: '#0D2F5D',
     fontWeight: '600',
   },
   inputLabel: {
