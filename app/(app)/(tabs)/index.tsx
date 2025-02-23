@@ -187,25 +187,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  lateText: {
-    color: theme.colors.error,
-    fontSize: 10,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    marginLeft: 8,
-  },
 });
 
 function getFirstName(fullName: string | null): string {
   if (!fullName) return 'Guest';
   return fullName.split(' ')[0];
 }
-
-const sortByTime = (a: Medication, b: Medication): number => {
-  const timeA = a.schedule?.times[0] || '00:00';
-  const timeB = b.schedule?.times[0] || '00:00';
-  return timeA.localeCompare(timeB);
-};
 
 export default function Home() {
   const theme = useTheme();
@@ -364,7 +351,7 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(app)/(tabs)/profile')}
+          onPress={() => {/* Handle reminder settings */}}
           style={({ pressed }) => [
             styles.actionCard,
             { 
@@ -378,31 +365,17 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(app)/notes')}
+          onPress={() => {/* Handle sharing */}}
           style={({ pressed }) => [
             styles.actionCard,
             { 
               backgroundColor: theme.colors.surfaceVariant,
               transform: [{ scale: pressed ? 0.98 : 1 }],
-              marginTop: 2
             }
           ]}
         >
-          <Ionicons 
-            name="journal-outline" 
-            size={24} 
-            color={theme.colors.primary}
-            style={{ marginTop: 2 }}
-          />
-          <Text 
-            variant="bodyMedium" 
-            style={[
-              styles.actionText,
-              { marginTop: 2 }
-            ]}
-          >
-            Daily Notes
-          </Text>
+          <Ionicons name="share-social-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Share With Doctor</Text>
         </Pressable>
       </View>
     </View>
@@ -590,14 +563,6 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
     }
   };
 
-  const isMedicationLate = (time: string): boolean => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const now = new Date();
-    const scheduledTime = new Date();
-    scheduledTime.setHours(hours, minutes, 0);
-    return now > scheduledTime;
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView>
@@ -651,57 +616,45 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.morning.length > 0 ? (
-              groupedMedications.morning
-                .sort(sortByTime)
-                .map((med, index) => (
-                  <MotiView
-                    key={med.id}
-                    from={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ type: 'timing', duration: 300, delay: index * 100 }}
-                    style={[
-                      styles.medicationItem,
-                      getTakenMedications().includes(med.id) && {
-                        opacity: 0.7,
-                        backgroundColor: theme.colors.surfaceVariant,
-                      }
-                    ]}
-                  >
-                    <View style={styles.medicationInfo}>
-                      <View style={styles.medicationHeader}>
-                        <Text style={styles.medicationName}>{med.brand_name}</Text>
-                      </View>
-                      <View style={styles.medicationDetails}>
-                        <Text style={styles.timeText}>
-                          {med.schedule?.times.map((time, index) => (
-                            <React.Fragment key={time}>
-                              {displayTime(time)}
-                              {isMedicationLate(time) && !getTakenMedications().includes(med.id) && (
-                                <Text style={styles.lateText}>   LATE</Text>
-                              )}
-                              {index < (med.schedule?.times.length || 1) - 1 ? ', ' : ''}
-                            </React.Fragment>
-                          ))}
-                        </Text>
-                        <Text style={styles.divider}>•</Text>
-                        <Text style={styles.dosageText}>
-                          {med.schedule?.dosage}
-                        </Text>
-                      </View>
-                      {med.schedule?.frequency !== 'daily' && (
-                        <Text style={styles.scheduleText}>
-                          {med.schedule?.frequency === 'weekly' 
-                            ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                            : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
-                        </Text>
-                      )}
+              groupedMedications.morning.map((med, index) => (
+                <MotiView
+                  key={med.id}
+                  from={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ type: 'timing', duration: 300, delay: index * 100 }}
+                  style={[
+                    styles.medicationItem,
+                    getTakenMedications().includes(med.id) && {
+                      opacity: 0.7,
+                      backgroundColor: theme.colors.surfaceVariant,
+                    }
+                  ]}
+                >
+                  <View style={styles.medicationInfo}>
+                    <Text style={styles.medicationName}>{med.brand_name}</Text>
+                    <View style={styles.medicationDetails}>
+                      <Text style={styles.timeText}>
+                        {med.schedule?.times.map(displayTime).join(', ')}
+                      </Text>
+                      <Text style={styles.divider}>•</Text>
+                      <Text style={styles.dosageText}>
+                        {med.schedule?.dosage}
+                    </Text>
                     </View>
+                    {med.schedule?.frequency !== 'daily' && (
+                      <Text style={styles.scheduleText}>
+                        {med.schedule?.frequency === 'weekly' 
+                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                      </Text>
+                    )}
+                  </View>
 
-                    <View style={styles.actionsContainer}>
-                      <MedicationActions medication={med} showTakeAction={true} />
-                    </View>
-                  </MotiView>
-                ))
+                  <View style={styles.actionsContainer}>
+                    <MedicationActions medication={med} showTakeAction={true} />
+                  </View>
+                </MotiView>
+              ))
             ) : (
               <Text variant="bodyMedium" style={{
                 includeFontPadding: false,
@@ -737,11 +690,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
               <ActivityIndicator />
             ) : groupedMedications.upcoming.length > 0 ? (
               groupedMedications.upcoming
-                .sort((a, b) => {
-                  const daysComparison = a.daysUntil - b.daysUntil;
-                  if (daysComparison !== 0) return daysComparison;
-                  return sortByTime(a, b);
-                })
+                .sort((a, b) => a.daysUntil - b.daysUntil)
                 .map((med, index) => (
                   <MotiView
                     key={`${med.id}-upcoming`}
@@ -762,7 +711,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                         <Text style={styles.divider}>•</Text>
                         <Text style={styles.dosageText}>
                           {med.schedule?.dosage}
-                        </Text>
+                      </Text>
                       </View>
 
                       <Text style={styles.scheduleText}>
