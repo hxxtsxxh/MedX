@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator, ImageBackground } from 'react-native';
+import { ScrollView, StyleSheet, View, ActivityIndicator, ImageBackground, RefreshControl } from 'react-native';
 import { useTheme, Text, Card, Chip, Surface, IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useMedications } from '../../context/MedicationContext';
@@ -101,6 +101,9 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     paddingTop: 120,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   medicationCard: {
     marginBottom: 16,
@@ -364,7 +367,12 @@ If no interactions exist, return [].`;
         style={{ flex: 1, position: 'absolute', width: '100%', height: '100%' }}
         resizeMode="cover"
       />
-      <ScrollView style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <ScrollView 
+        style={[styles.container, { backgroundColor: 'transparent' }]}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
           animate={{ opacity: 1, translateY: 0 }}
@@ -373,12 +381,12 @@ If no interactions exist, return [].`;
           <Text variant="headlineMedium" style={{ color: theme.colors.primary }}>
             Drug Interaction
           </Text>
-          <Text 
-            variant="bodyLarge" 
-            style={{ color: theme.colors.onSurfaceVariant }}
-          >
-            Check potential interactions between your medications
-          </Text>
+          <IconButton
+            icon="reload"
+            color={theme.colors.primary}
+            size={24}
+            onPress={handleRefresh}
+          />
         </MotiView>
         
         {interactions.length === 0 ? (
