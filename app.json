@@ -34,6 +34,12 @@
           "defaultChannel": "medications",
           "enableBackgroundRemoteNotifications": true
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MedX to access your camera to scan medication labels."
+        }
       ]
     ],
     "experiments": {
