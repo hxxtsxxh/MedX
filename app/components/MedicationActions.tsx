@@ -44,12 +44,6 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
           />
         )}
         <IconButton
-          icon="information"
-          iconColor={theme.colors.primary}
-          size={20}
-          onPress={() => {/* Show medication details */}}
-        />
-        <IconButton
           icon="pencil"
           size={20}
           onPress={() => setEditModalVisible(true)}
