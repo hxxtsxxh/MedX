@@ -808,25 +808,14 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
             />
           )}
         />
-        
-        <List.Item
-          title="Notifications"
-          left={props => <List.Icon {...props} icon="bell" />}
-          right={() => (
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-            />
-          )}
-        />
 
         <Divider />
 
         <List.Subheader>Health Data</List.Subheader>
         
         <List.Item
-          title="Daily Notes"
-          description="Keep track of your daily thoughts and observations"
+          title="Daily Journal"
+          description="Track your daily thoughts and observations"
           left={props => <List.Icon {...props} icon="notebook" />}
           onPress={() => router.push('/(app)/notes')}
         />

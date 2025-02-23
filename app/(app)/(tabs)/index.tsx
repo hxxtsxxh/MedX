@@ -351,31 +351,31 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => {/* Handle reminder settings */}}
+          onPress={() => router.push('/(app)/(tabs)/profile')}
           style={({ pressed }) => [
             styles.actionCard,
             { 
               backgroundColor: theme.colors.tertiaryContainer,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.8 : 1,
             }
           ]}
         >
-          <Ionicons name="notifications-outline" size={24} color={theme.colors.tertiary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Reminder Settings</Text>
+          <Ionicons name="settings-outline" size={24} color={theme.colors.tertiary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Settings</Text>
         </Pressable>
 
         <Pressable
-          onPress={() => {/* Handle sharing */}}
+          onPress={() => router.push('/(app)/notes')}
           style={({ pressed }) => [
             styles.actionCard,
             { 
               backgroundColor: theme.colors.surfaceVariant,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.8 : 1,
             }
           ]}
         >
-          <Ionicons name="share-social-outline" size={24} color={theme.colors.primary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Share With Doctor</Text>
+          <Ionicons name="journal-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Daily Journal</Text>
         </Pressable>
       </View>
     </View>
@@ -645,7 +645,8 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                       <Text style={styles.scheduleText}>
                         {med.schedule?.frequency === 'weekly' 
                           ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`
+                        }
                       </Text>
                     )}
                   </View>
@@ -717,9 +718,10 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                       <Text style={styles.scheduleText}>
                         {med.schedule?.frequency === 'weekly' 
                           ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`
+                        }
                       </Text>
-                      
+
                       <Text 
                         style={[styles.scheduleText, { color: theme.colors.secondary }]}
                       >
@@ -740,40 +742,6 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
 
         {renderQuickActions()}
       </ScrollView>
-
-      <Portal>
-        <Modal
-          visible={historyVisible}
-          onDismiss={() => setHistoryVisible(false)}
-          contentContainerStyle={[
-            styles.modalContainer,
-            { backgroundColor: theme.colors.surface }
-          ]}
-        >
-          <Text variant="headlineSmall" style={styles.modalTitle}>Medication History</Text>
-          {medicationHistory.map((entry, index) => (
-            <MotiView
-              key={index}
-              from={{ opacity: 0, translateY: 20 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 300, delay: index * 100 }}
-              style={styles.historyItem}
-            >
-              <Text variant="titleMedium">{entry.date}</Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                {entry.medications.join(', ')}
-              </Text>
-            </MotiView>
-          ))}
-          <Button
-            mode="contained"
-            onPress={() => setHistoryVisible(false)}
-            style={styles.modalButton}
-          >
-            Close
-          </Button>
-        </Modal>
-      </Portal>
 
       <Portal>
         <Modal
