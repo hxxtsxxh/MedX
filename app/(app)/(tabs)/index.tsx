@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator, Platform, Pressable } from 'react-native';
-import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal, Chip, IconButton } from 'react-native-paper';
+import { ScrollView, StyleSheet, View, ActivityIndicator, Platform, Pressable, Image, useWindowDimensions, ImageBackground } from 'react-native';
+import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal, Chip, IconButton, MD3Theme } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,8 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
+import { useAnimatedStyle, useSharedValue, interpolate } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 type GeminiResponse = {
   candidates: Array<{
@@ -25,23 +27,17 @@ type GeminiResponse = {
   }>;
 };
 
-const createStyles = (theme: any) => StyleSheet.create({
+const createStyles = (theme: MD3Theme) => StyleSheet.create({
   container: {
     flex: 1,
   },
   header: {
     padding: 20,
-    paddingTop: 120,
-  },
-  searchContainer: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  searchBar: {
-    elevation: 2,
+    paddingTop: 140,
   },
   section: {
-    margin: 20,
+    marginHorizontal: 10,
+    marginBottom: 20,
     marginTop: 0,
   },
   medicationItem: {
@@ -52,14 +48,19 @@ const createStyles = (theme: any) => StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: 12,
     gap: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    ...(Platform.OS === 'ios' ? {
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+    } : {
+      elevation: 3, // Android shadow
+    }),
   },
   medicationInfo: {
     flex: 1,
@@ -69,11 +70,13 @@ const createStyles = (theme: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+    backgroundColor: theme.colors.primary,
   },
   medicationName: {
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.onSurface,
+    includeFontPadding: false,
   },
   medicationDetails: {
     flexDirection: 'row',
@@ -83,19 +86,23 @@ const createStyles = (theme: any) => StyleSheet.create({
   timeText: {
     fontSize: 14,
     color: theme.colors.primary,
+    includeFontPadding: false,
   },
   dosageText: {
     fontSize: 14,
     color: theme.colors.onSurfaceVariant,
+    includeFontPadding: false,
   },
   divider: {
     fontSize: 14,
     color: theme.colors.onSurfaceVariant,
+    includeFontPadding: false,
   },
   scheduleText: {
     fontSize: 12,
     color: theme.colors.onSurfaceVariant,
     marginTop: 2,
+    includeFontPadding: false,
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -162,6 +169,7 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   actionText: {
     textAlign: 'center',
+    includeFontPadding: false,
   },
   overviewContainer: {
     flexDirection: 'row',
@@ -170,18 +178,10 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   overviewCard: {
     flex: 1,
-    padding: 16,
-    borderRadius: 16,
     alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
     gap: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
   },
   editActions: {
     flexDirection: 'row',
@@ -203,6 +203,20 @@ export default function Home() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const { height } = useWindowDimensions();
+  const scrollY = useSharedValue(0);
+
+  const backgroundStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [0, height],
+      [0, height * 0.2]  // Slightly less intense parallax for dashboard
+    );
+
+    return {
+      transform: [{ translateY }],
+    };
+  });
 
   const groupMedicationsByTime = (medications: Medication[]) => {
     const now = new Date();
@@ -282,34 +296,46 @@ export default function Home() {
     
     return (
       <View style={styles.sectionContainer}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>Daily Overview</Text>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>Daily Overview</Text>
         <View style={styles.overviewContainer}>
-          <View style={[styles.overviewCard, { backgroundColor: theme.colors.primaryContainer }]}>
+          <View style={[styles.overviewCard, { 
+            backgroundColor: theme.colors.primary + '15',  // 15% opacity
+            borderWidth: 1,
+            borderColor: theme.colors.primary,
+          }]}>
             <Ionicons name="calendar" size={24} color={theme.colors.primary} />
             <Text variant="titleLarge" style={{ color: theme.colors.primary }}>
               {totalMeds}
             </Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onPrimaryContainer }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.primary }}>
               Medications Today
             </Text>
           </View>
 
-          <View style={[styles.overviewCard, { backgroundColor: theme.colors.secondaryContainer }]}>
+          <View style={[styles.overviewCard, { 
+            backgroundColor: theme.colors.secondary + '15',  // 15% opacity
+            borderWidth: 1,
+            borderColor: theme.colors.secondary,
+          }]}>
             <Ionicons name="checkmark-circle" size={24} color={theme.colors.secondary} />
             <Text variant="titleLarge" style={{ color: theme.colors.secondary }}>
               {takenMeds}/{totalMeds}
             </Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSecondaryContainer }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.secondary }}>
               Taken
             </Text>
           </View>
 
-          <View style={[styles.overviewCard, { backgroundColor: theme.colors.tertiaryContainer }]}>
+          <View style={[styles.overviewCard, { 
+            backgroundColor: theme.colors.tertiary + '15',  // 15% opacity
+            borderWidth: 1,
+            borderColor: theme.colors.tertiary,
+          }]}>
             <Ionicons name="time" size={24} color={theme.colors.tertiary} />
             <Text variant="titleLarge" style={{ color: theme.colors.tertiary }}>
               {totalMeds - takenMeds}
             </Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onTertiaryContainer }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.tertiary }}>
               Remaining
             </Text>
           </View>
@@ -320,20 +346,33 @@ export default function Home() {
 
   const renderQuickActions = () => (
     <View style={styles.sectionContainer}>
-      <Text variant="titleMedium" style={styles.sectionTitle}>Quick Actions</Text>
+      <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>Quick Actions</Text>
       <View style={styles.quickActionsGrid}>
         <Pressable
           onPress={() => router.push('/(app)/(tabs)/scan')}
           style={({ pressed }) => [
             styles.actionCard,
             { 
-              backgroundColor: theme.colors.primaryContainer,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              backgroundColor: theme.colors.surface,
+              opacity: pressed ? 0.8 : 1,
+              borderColor: theme.colors.surface,
+              borderWidth: 1,
+              ...(Platform.OS === 'ios' ? {
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+              } : {
+                elevation: 3, // Android shadow
+              }),
             }
           ]}
         >
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.primary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Add Medication</Text>
+          <Text variant="bodyMedium" style={[styles.actionText, { color: theme.colors.primary }]}>Add Medication</Text>
         </Pressable>
 
         <Pressable
@@ -341,13 +380,26 @@ export default function Home() {
           style={({ pressed }) => [
             styles.actionCard,
             { 
-              backgroundColor: theme.colors.secondaryContainer,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              backgroundColor: theme.colors.surface,
+              opacity: pressed ? 0.8 : 1,
+              borderColor: theme.colors.surface,
+              borderWidth: 1,
+              ...(Platform.OS === 'ios' ? {
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+              } : {
+                elevation: 3, // Android shadow
+              }),
             }
           ]}
         >
-          <Ionicons name="document-text-outline" size={24} color={theme.colors.secondary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Export Report</Text>
+          <Ionicons name="document-text-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={[styles.actionText, { color: theme.colors.primary }]}>Export Report</Text>
         </Pressable>
 
         <Pressable
@@ -355,13 +407,26 @@ export default function Home() {
           style={({ pressed }) => [
             styles.actionCard,
             { 
-              backgroundColor: theme.colors.tertiaryContainer,
+              backgroundColor: theme.colors.surface,
               opacity: pressed ? 0.8 : 1,
+              borderColor: theme.colors.surface,
+              borderWidth: 1,
+              ...(Platform.OS === 'ios' ? {
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+              } : {
+                elevation: 3, // Android shadow
+              }),
             }
           ]}
         >
-          <Ionicons name="settings-outline" size={24} color={theme.colors.tertiary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Settings</Text>
+          <Ionicons name="settings-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={[styles.actionText, { color: theme.colors.primary }]}>Settings</Text>
         </Pressable>
 
         <Pressable
@@ -369,20 +434,33 @@ export default function Home() {
           style={({ pressed }) => [
             styles.actionCard,
             { 
-              backgroundColor: theme.colors.surfaceVariant,
+              backgroundColor: theme.colors.surface,
               opacity: pressed ? 0.8 : 1,
+              borderColor: theme.colors.surface,
+              borderWidth: 1,
+              ...(Platform.OS === 'ios' ? {
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+              } : {
+                elevation: 3, // Android shadow
+              }),
             }
           ]}
         >
           <Ionicons name="journal-outline" size={24} color={theme.colors.primary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Daily Journal</Text>
+          <Text variant="bodyMedium" style={[styles.actionText, { color: theme.colors.primary }]}>Daily Journal</Text>
         </Pressable>
       </View>
     </View>
   );
 
   const generateMedicationReport = async (medications: Medication[]): Promise<string> => {
-    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
+    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisX7mCVeSnGiA';
     const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
     try {
@@ -564,23 +642,35 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView>
+    <View style={{ flex: 1 }}>
+      <ImageBackground
+        source={theme.dark 
+          ? require('../../../assets/images/Dark_Background.png') 
+          : require('../../../assets/images/Background.png')}
+        style={{ flex: 1, position: 'absolute', width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
+      <ScrollView
+        style={{ flex: 1 }}
+        onScroll={(event) => {
+          scrollY.value = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
+      >
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: 'timing', duration: 600 }}
-          style={styles.header}
+          style={[styles.header, theme.dark && { backgroundColor: 'rgba(0, 0, 0, 0.0)' }]}
         >
           <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
             Welcome back,{' '}
             <Text style={{ 
               color: theme.colors.primary,
-              fontWeight: 'bold' 
+              fontWeight: 'bold'
             }}>
-              {getFirstName(auth.currentUser?.displayName)}
+              {getFirstName(auth.currentUser?.displayName)}!
             </Text>
-            !
           </Text>
           <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
             Track your medications and stay healthy
@@ -591,28 +681,28 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
 
         <Card style={[styles.section, {
           elevation: 0,
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.secondary + '0',
           ...(Platform.OS === 'android' ? {
             borderWidth: 1,
-            borderColor: 'rgba(0, 0, 0, 0.1)',
+            borderColor: theme.colors.surface,
           } : {
             shadowColor: '#000',
             shadowOffset: {
               width: 0,
               height: 1,
             },
-            shadowOpacity: 0.18,
+            shadowOpacity: 0.0,
             shadowRadius: 1.0,
           }),
         }]}>
           <Card.Title 
-            title="Today's Schedule" 
+            title={<Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>Today's Schedule</Text>}
             titleStyle={{
               fontWeight: '700',
               includeFontPadding: false,
             }}
           />
-          <Card.Content style={{ elevation: 0 }}>
+          <Card.Content style={{ elevation: 0, }}>
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.morning.length > 0 ? (
@@ -625,8 +715,8 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                   style={[
                     styles.medicationItem,
                     getTakenMedications().includes(med.id) && {
-                      opacity: 0.7,
-                      backgroundColor: theme.colors.surfaceVariant,
+                      backgroundColor: theme.colors.primary + '10', // 10% opacity background
+                      borderColor: theme.colors.primary,
                     }
                   ]}
                 >
@@ -668,25 +758,28 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
 
         <Card style={[styles.section, {
           elevation: 0,
-          backgroundColor: theme.colors.surface,
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: 1,
-          },
-          shadowOpacity: 0.18,
-          shadowRadius: 1.0,
-          borderWidth: Platform.OS === 'android' ? 1 : 0,
-          borderColor: 'rgba(0, 0, 0, 0.1)',
+          backgroundColor: theme.colors.secondary + '0',
+          ...(Platform.OS === 'android' ? {
+            borderWidth: 1,
+            borderColor: theme.colors.surface,
+          } : {
+            shadowColor: '#000',
+            shadowOffset: {
+              width: 0,
+              height: 1,
+            },
+            shadowOpacity: 0.0,
+            shadowRadius: 1.0,
+          }),
         }]}>
           <Card.Title 
-            title="Upcoming Doses" 
+            title={<Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>Upcoming Doses</Text>}
             titleStyle={{
               fontWeight: '700',
               includeFontPadding: false,
             }}
           />
-          <Card.Content>
+          <Card.Content style={{ elevation: 0, }}>
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.upcoming.length > 0 ? (
@@ -700,7 +793,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                     transition={{ type: 'timing', duration: 600, delay: index * 100 }}
                     style={[
                       styles.medicationItem,
-                      { backgroundColor: theme.colors.surfaceVariant + '10' }
+                      { backgroundColor: theme.colors.surface }
                     ]}
                   >
                     <View style={styles.medicationInfo}>
