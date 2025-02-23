@@ -356,6 +356,7 @@ If no interactions exist, return [].`;
   }
 
   return (
+<<<<<<< Updated upstream
     <View style={{ flex: 1 }}>
       <ImageBackground
         source={theme.dark 
@@ -365,6 +366,36 @@ If no interactions exist, return [].`;
         resizeMode="cover"
       />
       <ScrollView style={[styles.container, { backgroundColor: 'transparent' }]}>
+=======
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+      >
+        <View>
+          <Text variant="headlineMedium">
+            Drug Interaction
+          </Text>
+          <Text 
+            variant="bodyLarge" 
+            style={{ color: theme.colors.onSurfaceVariant }}
+          >
+            Check potential interactions
+          </Text>
+        </View>
+        <IconButton
+          icon="refresh"
+          size={24}
+          mode="contained"
+          onPress={handleRefresh}
+          loading={isRefreshing}
+          style={{ marginLeft: 8 }}
+        />
+      </MotiView>
+      
+      {interactions.length === 0 ? (
+>>>>>>> Stashed changes
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
           animate={{ opacity: 1, translateY: 0 }}
