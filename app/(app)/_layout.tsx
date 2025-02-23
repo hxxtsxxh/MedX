@@ -6,21 +6,23 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { darkTheme, lightTheme } from '../constants/theme';
 import { MedicationProvider } from '../context/MedicationContext';
+import { useNotificationHandler } from '../utils/notificationHandler';
 
 export default function AppLayout() {
   const { isDark } = useTheme();
+
+  // Set up notification handling
+  useNotificationHandler();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <MedicationProvider>
         <ChatProvider>
           <PaperProvider theme={isDark ? darkTheme : lightTheme}>
-            <Stack 
-              screenOptions={{
-                headerShown: false,
-                animation: 'fade',
-              }} 
-            />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="notes" options={{ headerShown: false }} />
+            </Stack>
           </PaperProvider>
         </ChatProvider>
       </MedicationProvider>

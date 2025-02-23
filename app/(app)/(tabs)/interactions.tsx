@@ -87,11 +87,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
+    padding: 20,
     paddingTop: 120,
+  },
+  medicationCard: {
+    marginBottom: 16,
+  },
+  medicationHeader: {
+    padding: 12,
+    gap: 4,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
   },
 });
 
@@ -267,6 +277,38 @@ If no interactions exist, return [].`;
     }
   };
 
+  const renderInteractionCard = (medication: Medication, index: number) => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+    >
+      <Surface style={styles.medicationCard} elevation={1}>
+        <View style={styles.medicationHeader}>
+          <View style={styles.titleContainer}>
+            <Text variant="titleMedium">{medication.brand_name}</Text>
+            <Text 
+              variant="bodySmall" 
+              style={{ 
+                color: theme.colors.secondary,
+                marginLeft: 8,
+                fontStyle: 'italic'
+              }}
+            >
+              {medication.dosage_form}
+            </Text>
+          </View>
+          <Text 
+            variant="bodyMedium" 
+            style={{ color: theme.colors.onSurfaceVariant }}
+          >
+            {medication.generic_name}
+          </Text>
+        </View>
+      </Surface>
+    </MotiView>
+  );
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -293,15 +335,21 @@ If no interactions exist, return [].`;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <Text variant="titleLarge">Drug Interactions</Text>
-        <IconButton
-          icon="refresh"
-          size={24}
-          onPress={analyzeInteractions}
-          disabled={loading || medications.length <= 1}
-        />
-      </View>
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        style={styles.header}
+      >
+        <Text variant="headlineMedium">
+          Drug Interaction
+        </Text>
+        <Text 
+          variant="bodyLarge" 
+          style={{ color: theme.colors.onSurfaceVariant }}
+        >
+          Check potential interactions between your medications
+        </Text>
+      </MotiView>
       
       {interactions.length === 0 ? (
         <MotiView

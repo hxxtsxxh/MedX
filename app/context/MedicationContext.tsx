@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Medication } from '../(app)/api/medications';
 import { auth, db } from '../../firebaseConfig';
 import { collection, addDoc, deleteDoc, query, where, getDocs, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { showMessage } from 'react-native-flash-message';
 import { MotiView } from 'moti';
+import { scheduleMedicationNotification, requestNotificationPermissions } from '../utils/notifications';
 
 interface MedicationContextType {
   medications: Medication[];
@@ -40,6 +41,7 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Set up real-time listener for medications
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
@@ -88,6 +90,34 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     };
   }, []); // Empty dependency array since we want this to run once on mount
 
+  // Request notification permissions when the provider mounts
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
+  const refreshMedications = useCallback(async () => {
+    if (!auth.currentUser) {
+      console.log('No user logged in during refresh'); // Debug log
+      return [];
+    }
+
+    try {
+      const medicationsRef = collection(db, 'medications');
+      const q = query(medicationsRef, where('userId', '==', auth.currentUser.uid));
+      const snapshot = await getDocs(q);
+      const meds = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Medication[];
+      console.log('Medications refreshed:', meds); // Debug log
+      setMedications(meds);
+      return meds;
+    } catch (error) {
+      console.error('Error refreshing medications:', error);
+      return [];
+    }
+  }, []);
+
   const addMedication = async (medication: Medication) => {
     if (!auth.currentUser) {
       showMessage({
@@ -109,6 +139,17 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
 
       const docRef = await addDoc(collection(db, 'medications'), medData);
       
+      // Schedule notifications for the new medication
+      if (medication.schedule) {
+        await scheduleMedicationNotification(
+          medication.brand_name,
+          medication.dosage?.toString() || '',
+          medication.schedule.times,
+          medication.schedule.days,
+          medication.schedule.frequency
+        );
+      }
+
       showMessage({
         message: "Medication Added Successfully",
         description: `${medication.brand_name} has been added to your medications`,
@@ -174,12 +215,25 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
-      const medicationRef = doc(db, 'medications', id);
-      await updateDoc(medicationRef, {
+      const docRef = doc(db, 'medications', id);
+      const updateData = {
         ...medication,
         updated_at: new Date().toISOString(),
-      });
+      };
       
+      await updateDoc(docRef, updateData);
+
+      // Reschedule notifications for the updated medication
+      if (medication.schedule) {
+        await scheduleMedicationNotification(
+          medication.brand_name,
+          medication.dosage?.toString() || '',
+          medication.schedule.times,
+          medication.schedule.days,
+          medication.schedule.frequency
+        );
+      }
+
       showMessage({
         message: "Medication Updated",
         description: `${medication.brand_name} has been updated`,
@@ -222,45 +276,9 @@ export function MedicationProvider({ children }: { children: React.ReactNode }) 
     return takenMedications[date] || [];
   };
 
-  const refreshMedications = async () => {
-    if (!auth.currentUser) {
-      showMessage({
-        message: "Authentication Error",
-        description: "Please sign in to refresh medications",
-        type: "danger",
-        duration: 3000,
-      });
-      return [];
-    }
-
-    try {
-      const q = query(
-        collection(db, 'medications'),
-        where('userId', '==', auth.currentUser.uid)
-      );
-
-      const snapshot = await getDocs(q);
-      const meds = snapshot.docs.map(doc => ({
-        ...doc.data() as Medication,
-        id: doc.id,
-      }));
-      setMedications(meds);
-      return meds;
-    } catch (error) {
-      console.error('Error refreshing medications:', error);
-      showMessage({
-        message: "Error Refreshing Medications",
-        description: "Please try again",
-        type: "danger",
-        duration: 3000,
-      });
-      return [];
-    }
-  };
-
   return (
-    <MedicationContext.Provider value={{
-      medications,
+    <MedicationContext.Provider value={{ 
+      medications, 
       addMedication,
       removeMedication,
       updateMedication,

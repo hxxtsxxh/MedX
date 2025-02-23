@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Modal, Portal, Text, TextInput, Button, Chip, useTheme } from 'react-native-paper';
 import { TimePickerModal } from 'react-native-paper-dates';
 import { Medication, MedicationSchedule } from '../(app)/api/medications';
@@ -11,9 +11,47 @@ interface MedicationEditModalProps {
   visible: boolean;
   onDismiss: () => void;
   medication: Medication;
+  onDelete: () => void;
 }
 
-export const MedicationEditModal = ({ visible, onDismiss, medication }: MedicationEditModalProps) => {
+const DAYS_OF_WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAYS_OF_WEEK_FULL = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+const DayCircle = ({ 
+  label, 
+  selected, 
+  onPress 
+}: { 
+  label: string, 
+  selected: boolean, 
+  onPress: () => void 
+}) => {
+  const theme = useTheme();
+  
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.dayCircle,
+        {
+          backgroundColor: selected ? theme.colors.primary : 'transparent',
+          borderColor: selected ? theme.colors.primary : theme.colors.outline,
+        }
+      ]}
+    >
+      <Text
+        style={[
+          styles.dayText,
+          { color: selected ? theme.colors.onPrimary : theme.colors.onSurface }
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
+
+export const MedicationEditModal = ({ visible, onDismiss, medication, onDelete }: MedicationEditModalProps) => {
   const theme = useTheme();
   const { updateMedication } = useMedications();
   const [schedule, setSchedule] = useState<MedicationSchedule>(
@@ -77,8 +115,9 @@ export const MedicationEditModal = ({ visible, onDismiss, medication }: Medicati
         <Text variant="headlineSmall" style={styles.title}>Edit {medication.brand_name}</Text>
         <ScrollView style={styles.content}>
           <TextInput
+            mode="outlined"
             label="Dosage"
-            value={schedule.dosage}
+            value={schedule.dosage.replace(/[^0-9]/g, '')}
             onChangeText={(text) => {
               const numericValue = text.replace(/[^0-9]/g, '');
               setSchedule(prev => ({
@@ -86,7 +125,12 @@ export const MedicationEditModal = ({ visible, onDismiss, medication }: Medicati
                 dosage: numericValue ? formatDosage(numericValue, medication.brand_name) : ''
               }));
             }}
-            placeholder={`Enter dosage (${getDosageUnit(medication.brand_name)})`}
+            right={
+              <TextInput.Affix 
+                text={getDosageUnit(medication.brand_name)} 
+                textStyle={{ color: theme.colors.onSurfaceVariant }}
+              />
+            }
             keyboardType="numeric"
             style={styles.input}
           />
@@ -122,20 +166,29 @@ export const MedicationEditModal = ({ visible, onDismiss, medication }: Medicati
                 {schedule.frequency === 'weekly' ? 'Days of Week' : 'Days of Month'}
               </Text>
               <View style={styles.daysContainer}>
-                {(schedule.frequency === 'weekly' ? weekDays : monthDays).map((day) => (
-                  <Chip
-                    key={day}
-                    selected={schedule.days.includes(
-                      typeof day === 'number' ? day.toString() : day.toLowerCase()
-                    )}
-                    onPress={() => handleDayToggle(
-                      typeof day === 'number' ? day.toString() : day.toLowerCase()
-                    )}
-                    style={styles.chip}
-                  >
-                    {typeof day === 'number' ? day : day.slice(0, 3)}
-                  </Chip>
-                ))}
+                {schedule.frequency === 'weekly' ? (
+                  <View style={styles.weekDaysRow}>
+                    {DAYS_OF_WEEK.map((day, index) => (
+                      <DayCircle
+                        key={`${day}_${index}`}
+                        label={day}
+                        selected={schedule.days.includes(DAYS_OF_WEEK_FULL[index])}
+                        onPress={() => handleDayToggle(DAYS_OF_WEEK_FULL[index])}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.monthDaysGrid}>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                      <DayCircle
+                        key={day}
+                        label={day.toString()}
+                        selected={schedule.days.includes(day.toString())}
+                        onPress={() => handleDayToggle(day.toString())}
+                      />
+                    ))}
+                  </View>
+                )}
               </View>
             </>
           )}
@@ -168,11 +221,28 @@ export const MedicationEditModal = ({ visible, onDismiss, medication }: Medicati
         </ScrollView>
 
         <View style={styles.actions}>
-          <Button onPress={onDismiss}>Cancel</Button>
+          <Button 
+            mode="outlined" 
+            onPress={onDismiss}
+            style={styles.button}
+            labelStyle={{ fontSize: 13 }}
+          >
+            Cancel
+          </Button>
           <Button 
             mode="contained" 
+            onPress={onDelete}
+            style={styles.button}
+            buttonColor={theme.colors.error}
+            labelStyle={{ fontSize: 13 }}
+          >
+            Delete
+          </Button>
+          <Button 
+            mode="contained"
             onPress={handleSave}
-            disabled={!schedule.dosage || !schedule.times.length}
+            style={styles.button}
+            labelStyle={{ fontSize: 13 }}
           >
             Save
           </Button>
@@ -193,7 +263,7 @@ const styles = StyleSheet.create({
     padding: 20,
     margin: 20,
     borderRadius: 12,
-    maxHeight: '90%',
+    maxHeight: '100%',
   },
   title: {
     marginBottom: 20,
@@ -203,26 +273,37 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   sectionTitle: {
-    marginTop: 16,
+    marginTop: 15,
     marginBottom: 8,
   },
   input: {
-    marginBottom: 16,
+    marginBottom: 15,
   },
   frequencyButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 15,
     gap: 8,
   },
   frequencyButton: {
     flex: 1,
   },
   daysContainer: {
+    marginBottom: 15,
+  },
+  weekDaysRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+    gap: 4,
+  },
+  monthDaysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
+    justifyContent: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 0,
+    width: 238,
   },
   chipGroup: {
     flexDirection: 'row',
@@ -231,17 +312,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chip: {
-    margin: 4,
+    margin: 5,
   },
   addTimeButton: {
-    marginTop: 8,
+    marginTop: 5,
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 20,
+    justifyContent: 'space-between',
     gap: 8,
+    marginTop: 20,
   },
-}); 
+  button: {
+    flex: 1,
+  },
+  dayCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 0,
+  },
+  dayText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});
 
 export default MedicationEditModal;

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, Platform, Pressable } from 'react-native';
-import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, View, Platform, Pressable, Linking } from 'react-native';
+import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal, ActivityIndicator, IconButton, Dialog, SegmentedButtons, TextInput } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
 import { 
@@ -12,13 +12,17 @@ import {
 import { router } from 'expo-router';
 import { getAuth, signOut, updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../../../firebaseConfig';
-import { TextInput } from 'react-native-paper';
+import { TextInput as RNPPTextInput } from 'react-native-paper';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useMedications } from '../../context/MedicationContext';
 import { formatDosage, displayTime } from '../../utils/formatters';
 import * as Print from 'expo-print';
 import axios from 'axios';
+import { DailyNotes } from '../../components/DailyNotes';
+import { useNotes } from '../../context/NotesContext';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../../firebaseConfig';
 
 const styles = StyleSheet.create({
   container: {
@@ -100,6 +104,22 @@ type GeminiResponse = {
   }>;
 };
 
+// Add this interface
+interface EmergencyContact {
+  id: string;
+  name: string;
+  type: 'contact' | 'doctor' | 'emergency';  // Make this a literal union type
+  phone: string;
+  relation?: string;
+}
+
+// Add this validation function at the top level
+const isValidPhoneNumber = (phone: string): boolean => {
+  // Basic US phone number validation (accepts formats like: 1234567890, 123-456-7890, (123) 456-7890)
+  const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+  return phoneRegex.test(phone);
+};
+
 export default function Profile() {
   const theme = useTheme();
   const { isDark, setTheme } = useAppTheme();
@@ -114,6 +134,19 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const { notes, addNote, deleteNote, loading: loadingNotes } = useNotes();
+  const [notesVisible, setNotesVisible] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [contactModalVisible, setContactModalVisible] = useState(false);
+  const [newContact, setNewContact] = useState<EmergencyContact>({
+    id: '',
+    name: '',
+    type: 'contact',
+    phone: '',
+    relation: ''
+  });
+  const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
 
   // Initialize profile image from auth on mount
   React.useEffect(() => {
@@ -121,6 +154,188 @@ export default function Profile() {
       setProfileImage(auth.currentUser.photoURL);
     }
   }, []);
+
+  React.useEffect(() => {
+    // Hide the header for this screen
+    router.setParams({
+      headerShown: 'false'
+    });
+  }, []);
+
+  // Load emergency contacts on mount
+  useEffect(() => {
+    loadEmergencyContacts();
+  }, []);
+
+  const loadEmergencyContacts = async () => {
+    if (!auth.currentUser) return;
+    const docRef = doc(db, 'users', auth.currentUser.uid);
+    const docSnap = await getDoc(docRef);
+    
+    // Create default emergency contact
+    const emergency911 = {
+      id: 'emergency-911',
+      name: 'Emergency Services',
+      type: 'emergency' as const, // Explicitly type as 'emergency'
+      phone: '911'
+    };
+    
+    if (!docSnap.exists()) {
+      // Create new document with default emergency contact
+      await setDoc(docRef, { 
+        emergencyContacts: [emergency911]
+      });
+      setEmergencyContacts([emergency911]);
+    } else {
+      let contacts = docSnap.data().emergencyContacts || [];
+      
+      // Add 911 if no contacts exist
+      if (contacts.length === 0) {
+        contacts = [emergency911];
+        await updateDoc(docRef, { emergencyContacts: contacts });
+      }
+      
+      setEmergencyContacts(contacts);
+    }
+  };
+
+  // Helper function to format contact type
+  const formatContactType = (type: string): string => {
+    switch (type) {
+      case 'emergency':
+        return 'Emergency';
+      case 'doctor':
+        return 'Doctor';
+      case 'contact':
+        return 'Contact';
+      default:
+        return type;
+    }
+  };
+
+  // Helper function to get contact title
+  const getContactTitle = (contact: EmergencyContact): string => {
+    if (contact.type === 'emergency') {
+      return 'Emergency Services (911)';
+    }
+    return contact.name || '';
+  };
+
+  const handleCall = (contact: EmergencyContact) => {
+    // Format phone number by removing any non-numeric characters
+    const phoneNumber = contact.phone.replace(/\D/g, '');
+    
+    let phoneUrl = Platform.OS === 'ios' 
+      ? `telprompt:${phoneNumber}`
+      : `tel:${phoneNumber}`;
+    
+    // For emergency calls (911), use a direct tel: link
+    if (contact.type === 'emergency') {
+      phoneUrl = 'tel:911';
+    }
+    
+    Linking.canOpenURL(phoneUrl)
+      .then(supported => {
+        if (!supported) {
+          console.error('Phone number is not available');
+          return;
+        }
+        return Linking.openURL(phoneUrl);
+      })
+      .catch(err => {
+        console.error('Error making call:', err);
+        // Fallback for emergency calls
+        if (contact.type === 'emergency') {
+          // Try direct emergency number
+          Linking.openURL('tel:911');
+        }
+      });
+  };
+
+  const handleDeleteContact = async (contactId: string, contactType: string) => {
+    // Don't allow deletion of the main emergency contact (911)
+    if (contactType === 'emergency' && contactId === 'emergency-911') {
+      alert('The emergency services contact cannot be removed');
+      return;
+    }
+
+    if (!auth.currentUser) return;
+
+    try {
+      const updatedContacts = emergencyContacts.filter(contact => contact.id !== contactId);
+      const docRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(docRef, { emergencyContacts: updatedContacts });
+      setEmergencyContacts(updatedContacts);
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+    }
+  };
+
+  const handleEditContact = (contact: EmergencyContact) => {
+    setEditingContact(contact);
+    setNewContact(contact); // Populate the form with existing contact data
+    setContactModalVisible(true);
+  };
+
+  const handleAddContact = async () => {
+    if (!auth.currentUser) return;
+    
+    // Check for duplicate emergency contact
+    if (newContact.type === 'emergency' && 
+        emergencyContacts.some(contact => contact.type === 'emergency' && contact.id !== editingContact?.id)) {
+      alert('Emergency Services (911) is already in your contacts');
+      return;
+    }
+
+    // Validate phone number for non-emergency contacts
+    if (newContact.type !== 'emergency' && !isValidPhoneNumber(newContact.phone)) {
+      alert('Please enter a valid phone number');
+      return;
+    }
+
+    try {
+      let updatedContacts: EmergencyContact[];
+      if (editingContact) {
+        // Update existing contact
+        updatedContacts = emergencyContacts.map(contact => 
+          contact.id === editingContact.id ? { ...newContact, id: contact.id } : contact
+        );
+      } else {
+        // Add new contact
+        const contact: EmergencyContact = {
+          ...newContact,
+          id: Date.now().toString(),
+          name: newContact.type === 'emergency' ? 'Emergency Services' : newContact.name,
+          phone: newContact.type === 'emergency' ? '911' : newContact.phone,
+          type: newContact.type
+        };
+        updatedContacts = [...emergencyContacts, contact];
+      }
+      
+      const docRef = doc(db, 'users', auth.currentUser.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        await setDoc(docRef, { emergencyContacts: updatedContacts });
+      } else {
+        await updateDoc(docRef, { emergencyContacts: updatedContacts });
+      }
+
+      setEmergencyContacts(updatedContacts);
+      setContactModalVisible(false);
+      setEditingContact(null);
+      setNewContact({
+        id: '',
+        name: '',
+        type: 'contact',
+        phone: '',
+        relation: ''
+      });
+    } catch (error) {
+      console.error('Error saving contact:', error);
+      alert('Failed to save contact. Please try again.');
+    }
+  };
 
   const pickImage = async () => {
     const { status } = await requestMediaLibraryPermissionsAsync();
@@ -154,6 +369,16 @@ export default function Profile() {
     }
   };
 
+  /**
+   * @action Change Password
+   * @description Update user account password
+   * @steps
+   * 1. Click "Personal Information"
+   * 2. Click "Change Password"
+   * 3. Enter current password
+   * 4. Enter new password
+   * 5. Click "Update Password"
+   */
   const handleUpdatePassword = async () => {
     try {
       if (!currentPassword || !newPassword || !auth.currentUser?.email) {
@@ -332,7 +557,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
       .map(section => {
         if (section.includes(':')) {
           const [title, ...content] = section.split('\n');
-          return `
+        return `
             <div class="section">
               <div class="section-title">${title.trim()}</div>
               <div class="content">
@@ -367,6 +592,179 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
       setIsGeneratingReport(false);
     }
   };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    
+    try {
+      await addNote(newNote.trim());
+      setNewNote('');
+    } catch (error) {
+      console.error('Error adding note:', error);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteNote(noteId);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
+
+  // Update the render function to use the new title helper
+  const renderEmergencyContacts = () => (
+    <>
+      <List.Subheader>Emergency Contacts</List.Subheader>
+      
+      {emergencyContacts.map((contact) => (
+        <List.Item
+          key={contact.id}
+          title={getContactTitle(contact)}
+          description={contact.type === 'emergency' 
+            ? 'Emergency • 911'
+            : `${contact.type === 'contact' ? contact.relation : formatContactType(contact.type)} • ${contact.phone}`}
+          left={props => (
+            <List.Icon
+              {...props}
+              icon={
+                contact.type === 'doctor' ? 'doctor' :
+                contact.type === 'emergency' ? 'ambulance' : 'account'
+              }
+            />
+          )}
+          right={props => (
+            <IconButton
+              {...props}
+              icon="phone"
+              mode="contained"
+              containerColor={theme.colors.primary}
+              iconColor={theme.colors.onPrimary}
+              onPress={() => handleCall(contact)}
+            />
+          )}
+          onPress={() => {
+            if (contact.type === 'emergency' && contact.id === 'emergency-911') {
+              // Don't allow editing of main emergency contact
+              return;
+            }
+            handleEditContact(contact);
+          }}
+        />
+      ))}
+
+      <Button
+        mode="contained-tonal"
+        icon="plus"
+        onPress={() => setContactModalVisible(true)}
+        style={{ margin: 16 }}
+      >
+        Add Emergency Contact
+      </Button>
+
+      <Portal>
+        <Dialog visible={contactModalVisible} onDismiss={() => {
+          setContactModalVisible(false);
+          setEditingContact(null);
+          setNewContact({
+            id: '',
+            name: '',
+            type: 'contact',
+            phone: '',
+            relation: ''
+          });
+        }}>
+          <Dialog.Title>{editingContact ? 'Edit Contact' : 'Add Emergency Contact'}</Dialog.Title>
+          <Dialog.Content>
+            <SegmentedButtons
+              value={newContact.type}
+              onValueChange={(value) => 
+                setNewContact(prev => ({ ...prev, type: value as EmergencyContact['type'] }))}
+              buttons={[
+                { value: 'contact', label: 'Contact' },
+                { value: 'doctor', label: 'Doctor' },
+                { value: 'emergency', label: '911' }
+              ]}
+              style={{ marginBottom: 16 }}
+            />
+            
+            {newContact.type !== 'emergency' && (
+              <>
+                <TextInput
+                  label="Name"
+                  value={newContact.name}
+                  onChangeText={(text) => setNewContact(prev => ({ ...prev, name: text }))}
+                  style={{ marginBottom: 16 }}
+                />
+                <TextInput
+                  label="Phone Number"
+                  value={newContact.phone}
+                  onChangeText={(text) => setNewContact(prev => ({ ...prev, phone: text }))}
+                  keyboardType="phone-pad"
+                  style={{ marginBottom: 16 }}
+                  error={newContact.phone.length > 0 && !isValidPhoneNumber(newContact.phone)}
+                  helperText={
+                    newContact.phone.length > 0 && !isValidPhoneNumber(newContact.phone) 
+                      ? "Please enter a valid phone number (e.g., 123-456-7890)"
+                      : ""
+                  }
+                />
+                {newContact.type === 'contact' && (
+                  <TextInput
+                    label="Relation"
+                    value={newContact.relation}
+                    onChangeText={(text) => setNewContact(prev => ({ ...prev, relation: text }))}
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
+              </>
+            )}
+            {newContact.type === 'emergency' && (
+              <Text style={{ marginBottom: 16, color: theme.colors.onSurfaceVariant }}>
+                Call this number immediately if you are experiencing a medical emergency. Emergency services (911) will connect you with local first responders, ambulance, and emergency medical care.
+              </Text>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            {editingContact && (
+              <Button 
+                textColor={theme.colors.error}
+                onPress={() => {
+                  handleDeleteContact(editingContact.id, editingContact.type);
+                  setContactModalVisible(false);
+                  setEditingContact(null);
+                }}
+              >
+                Delete
+              </Button>
+            )}
+            <Button onPress={() => {
+              setContactModalVisible(false);
+              setEditingContact(null);
+              setNewContact({
+                id: '',
+                name: '',
+                type: 'contact',
+                phone: '',
+                relation: ''
+              });
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onPress={handleAddContact}
+              disabled={
+                newContact.type === 'emergency' ? false :
+                !newContact.name || !newContact.phone
+              }
+            >
+              {editingContact ? 'Save Changes' : 'Save'}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+    </>
+  );
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -427,23 +825,13 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         <List.Subheader>Health Data</List.Subheader>
         
         <List.Item
-          title="Connected Services"
-          description="Manage your connected health services"
-          left={props => <List.Icon {...props} icon="link" />}
-          onPress={() => {}}
+          title="Daily Notes"
+          description="Keep track of your daily thoughts and observations"
+          left={props => <List.Icon {...props} icon="notebook" />}
+          onPress={() => router.push('/(app)/notes')}
         />
 
-        <List.Item
-          title="Data Sharing"
-          description="Share anonymized data for research"
-          left={props => <List.Icon {...props} icon="database" />}
-          right={() => (
-            <Switch
-              value={dataSharing}
-              onValueChange={setDataSharing}
-            />
-          )}
-        />
+        {renderEmergencyContacts()}
 
         <Divider />
 
