@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_KEY = 'XqqfbY4r5ofStBBaqHIzfhPqwDmqYkTOGzsXoAaM';
@@ -13,8 +12,10 @@ export interface MedicationSchedule {
 
 export interface Medication {
   id: string;
-  generic_name: string;
   brand_name: string;
+  generic_name: string;
+  dosage_form: string;
+  product_ndc?: string;
   indications: string;
   warnings: string;
   active_ingredients: string;
@@ -54,15 +55,32 @@ export async function searchMedications(query: string): Promise<Medication[]> {
       response.data = lenientResponse.data;
     }
 
-    return response.data.results.map((label: any) => ({
+    const medications = response.data.results.map((label: any) => ({
       id: label.id || `med_${Math.random().toString(36).substring(2)}`,
-      generic_name: label.openfda?.generic_name?.[0] || 'N/A',
       brand_name: label.openfda?.brand_name?.[0] || 'N/A',
+      generic_name: label.openfda?.generic_name?.[0] || 'N/A',
+      product_ndc: label.openfda?.product_ndc?.[0],
+      dosage_form: '',
       indications: label.indications_and_usage?.[0] || 'N/A',
       warnings: label.warnings?.[0] || 'N/A',
       active_ingredients: label.active_ingredient?.[0] || 'N/A',
       drug_interactions: label.drug_interactions?.[0] || 'No known drug interactions.',
     }));
+
+    const medicationsWithDetails = await Promise.all(
+      medications.map(async (med) => {
+        if (med.product_ndc) {
+          const details = await fetchMedicationDetails(med.product_ndc);
+          return {
+            ...med,
+            ...details
+          };
+        }
+        return med;
+      })
+    );
+
+    return medicationsWithDetails;
   } catch (error: any) {
     if (error.response?.status === 404) {
       return [];
@@ -108,6 +126,26 @@ export async function getDrugInteractions(medications: Medication[]): Promise<st
   } catch (error) {
     console.error('Error fetching drug interactions:', error);
     return medications.map(() => 'Unable to fetch drug interactions.');
+  }
+}
+
+export async function fetchMedicationDetails(ndc: string): Promise<Partial<Medication> | null> {
+  const apiUrl = `https://api.fda.gov/drug/ndc.json?api_key=${API_KEY}&search=product_ndc:${ndc}&limit=1`;
+
+  try {
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const data = await response.json();
+    const result = data.results[0];
+
+    return {
+      dosage_form: result.dosage_form || 'Unknown form'
+    };
+  } catch (error) {
+    console.error('Error fetching medication details:', error);
+    return null;
   }
 }
 
