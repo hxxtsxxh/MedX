@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, Platform, Pressable, Linking } from 'react-native';
-import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal, ActivityIndicator, IconButton, Dialog, SegmentedButtons, TextInput } from 'react-native-paper';
+import { useTheme, Text, Avatar, Switch, List, Button, Divider, Portal, Modal, ActivityIndicator, IconButton, Dialog, SegmentedButtons, TextInput, Chip } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useTheme as useAppTheme } from '../../context/ThemeContext';
 import { 
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   bottomSheetTitle: {
-    marginBottom: 16,
+    marginBottom: 12,
     textAlign: 'center',
   },
   input: {
@@ -77,6 +77,37 @@ const styles = StyleSheet.create({
   modalAvatarContainer: {
     alignItems: 'center',
     marginBottom: 16,
+  },
+  medicalInput: {
+    backgroundColor: '#F3F4F6',
+    marginBottom: 0,
+    height: 45,
+  },
+  medicalLabel: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#374151',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    marginTop: 18,
+    marginBottom: 12,
+  },
+  inputGroup: {
+    gap: 20,
+  },
+  unitButtons: {
+    width: 140,
+    backgroundColor: '#F3F4F6',
+  },
+  unitButtonsContainer: {
+    marginLeft: 12,
+  },
+  unitText: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginLeft: 6,
+    alignSelf: 'center',
   },
 });
 
@@ -113,6 +144,18 @@ interface EmergencyContact {
   relation?: string;
 }
 
+// Add this interface near the top with other interfaces
+interface MedicalInformation {
+  age: string;
+  weight: string;
+  heightFt: string;  // Change height to separate ft and inches
+  heightIn: string;
+  bloodType: string;
+  allergies: string[];
+  medicalConditions: string[];
+  weightUnit: 'lbs';
+}
+
 // Add this validation function at the top level
 const isValidPhoneNumber = (phone: string): boolean => {
   // Basic US phone number validation (accepts formats like: 1234567890, 123-456-7890, (123) 456-7890)
@@ -147,6 +190,19 @@ export default function Profile() {
     relation: ''
   });
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
+  const [medicalModalVisible, setMedicalModalVisible] = useState(false);
+  const [medicalInfo, setMedicalInfo] = useState<MedicalInformation>({
+    age: '',
+    weight: '',
+    heightFt: '',
+    heightIn: '',
+    bloodType: '',
+    allergies: [],
+    medicalConditions: [],
+    weightUnit: 'lbs'
+  });
+  const [newAllergy, setNewAllergy] = useState('');
+  const [newCondition, setNewCondition] = useState('');
 
   // Initialize profile image from auth on mount
   React.useEffect(() => {
@@ -766,6 +822,52 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
     </>
   );
 
+  // Add this useEffect to load medical information
+  useEffect(() => {
+    loadMedicalInformation();
+  }, []);
+
+  // Add these functions to handle medical information
+  const loadMedicalInformation = async () => {
+    if (!auth.currentUser) return;
+    
+    try {
+      const docRef = doc(db, 'users', auth.currentUser.uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data().medicalInfo || {};
+        setMedicalInfo({
+          age: data.age || '',
+          weight: data.weight || '',
+          heightFt: data.heightFt || '',
+          heightIn: data.heightIn || '',
+          bloodType: data.bloodType || '',
+          allergies: data.allergies || [],
+          medicalConditions: data.medicalConditions || [],
+          weightUnit: 'lbs'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading medical information:', error);
+    }
+  };
+
+  const saveMedicalInformation = async () => {
+    if (!auth.currentUser) return;
+    
+    try {
+      const docRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(docRef, {
+        medicalInfo: medicalInfo
+      });
+      setMedicalModalVisible(false);
+    } catch (error) {
+      console.error('Error saving medical information:', error);
+      alert('Failed to save medical information');
+    }
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <MotiView
@@ -827,15 +929,17 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         <List.Subheader>Account</List.Subheader>
 
         <List.Item
-          title="Personal Information"
-          left={props => <List.Icon {...props} icon="account" />}
-          onPress={() => setBottomSheetVisible(true)}
+          title="Medical Information"
+          description="Update your health details"
+          left={props => <List.Icon {...props} icon="medical-bag" />}
+          onPress={() => setMedicalModalVisible(true)}
         />
 
         <List.Item
           title="Privacy Settings"
+          description="Password and privacy policy"
           left={props => <List.Icon {...props} icon="shield" />}
-          onPress={() => {}}
+          onPress={() => router.push('/(app)/privacy-settings')}
         />
 
         <List.Item
@@ -964,6 +1068,223 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         >
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text variant="bodyLarge">Generating your report...</Text>
+        </Modal>
+
+        <Modal
+          visible={medicalModalVisible}
+          onDismiss={() => setMedicalModalVisible(false)}
+          contentContainerStyle={[
+            styles.bottomSheetContent,
+            { 
+              backgroundColor: theme.colors.surface,
+              borderRadius: 25,
+              margin: 20,
+              marginTop: 75,
+              marginBottom: 75,
+              maxHeight: '100%',
+              paddingHorizontal: 20,
+              paddingTop: 25,
+              paddingBottom: 15,
+            }
+          ]}
+        >
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text variant="titleLarge" style={[styles.bottomSheetTitle, { fontSize: 22 }]}>
+              Medical Information
+            </Text>
+
+            <Text variant="titleMedium" style={[styles.sectionTitle]}>
+              Basic Information
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <View>
+                <Text style={styles.medicalLabel}>Age</Text>
+                <TextInput
+                  mode="outlined"
+                  value={medicalInfo.age}
+                  onChangeText={(text) => setMedicalInfo(prev => ({ ...prev, age: text }))}
+                  keyboardType="numeric"
+                  style={styles.medicalInput}
+                  outlineStyle={{ borderRadius: 8 }}
+                  dense
+                />
+              </View>
+
+              <View>
+                <Text style={styles.medicalLabel}>Weight</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TextInput
+                    mode="outlined"
+                    value={medicalInfo.weight}
+                    onChangeText={(text) => setMedicalInfo(prev => ({ ...prev, weight: text }))}
+                    keyboardType="numeric"
+                    style={[styles.medicalInput, { flex: 1 }]}
+                    outlineStyle={{ borderRadius: 8 }}
+                    placeholder="Enter weight"
+                    dense
+                  />
+                  <Text style={styles.unitText}>lbs</Text>
+                </View>
+              </View>
+
+              <View>
+                <Text style={styles.medicalLabel}>Height</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                    <TextInput
+                      mode="outlined"
+                      value={medicalInfo.heightFt}
+                      onChangeText={(text) => {
+                        // Ensure only numbers and limit to reasonable height
+                        const cleanText = text.replace(/[^0-9]/g, '');
+                        const numValue = parseInt(cleanText);
+                        if (numValue <= 9) {
+                          setMedicalInfo(prev => ({ ...prev, heightFt: cleanText }));
+                        }
+                      }}
+                      keyboardType="numeric"
+                      style={[styles.medicalInput, { flex: 1, marginBottom: 0 }]}
+                      outlineStyle={{ borderRadius: 8 }}
+                      placeholder="0"
+                      maxLength={1}
+                      dense
+                    />
+                    <Text style={styles.unitText}>ft</Text>
+                  </View>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                    <TextInput
+                      mode="outlined"
+                      value={medicalInfo.heightIn}
+                      onChangeText={(text) => {
+                        // Ensure only numbers and limit to 11 inches
+                        const cleanText = text.replace(/[^0-9]/g, '');
+                        const numValue = parseInt(cleanText);
+                        if (numValue <= 11) {
+                          setMedicalInfo(prev => ({ ...prev, heightIn: cleanText }));
+                        }
+                      }}
+                      keyboardType="numeric"
+                      style={[styles.medicalInput, { flex: 1, marginBottom: 0 }]}
+                      outlineStyle={{ borderRadius: 8 }}
+                      placeholder="0"
+                      maxLength={2}
+                      dense
+                    />
+                    <Text style={styles.unitText}>in</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View>
+                <Text style={styles.medicalLabel}>Blood Type</Text>
+                <TextInput
+                  mode="outlined"
+                  value={medicalInfo.bloodType}
+                  onChangeText={(text) => setMedicalInfo(prev => ({ ...prev, bloodType: text }))}
+                  style={styles.medicalInput}
+                  outlineStyle={{ borderRadius: 8 }}
+                  dense
+                />
+              </View>
+            </View>
+
+            <Text variant="titleMedium" style={[styles.medicalLabel, { marginTop: 8 }]}>
+              Allergies
+            </Text>
+            <View style={{ marginBottom: 0 }}>
+              <TextInput
+                mode="outlined"
+                placeholder="Add Allergy"
+                value={newAllergy}
+                onChangeText={setNewAllergy}
+                style={[styles.medicalInput, { marginBottom: 8 }]}
+                outlineStyle={{ borderRadius: 8 }}
+                right={
+                  <TextInput.Icon
+                    icon="plus"
+                    onPress={() => {
+                      if (newAllergy.trim()) {
+                        setMedicalInfo(prev => ({
+                          ...prev,
+                          allergies: [...prev.allergies, newAllergy.trim()]
+                        }));
+                        setNewAllergy('');
+                      }
+                    }}
+                  />
+                }
+              />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {medicalInfo?.allergies?.map((allergy, index) => (
+                  <Chip
+                    key={index}
+                    onClose={() => {
+                      setMedicalInfo(prev => ({
+                        ...prev,
+                        allergies: prev.allergies.filter((_, i) => i !== index)
+                      }));
+                    }}
+                    style={{ margin: 2 }}
+                  >
+                    {allergy}
+                  </Chip>
+                ))}
+              </View>
+            </View>
+
+            <Text variant="titleMedium" style={[styles.medicalLabel, { marginTop: 8 }]}>
+              Medical Conditions
+            </Text>
+            <View style={{ marginBottom: 0 }}>
+              <TextInput
+                mode="outlined"
+                placeholder="Add Medical Condition"
+                value={newCondition}
+                onChangeText={setNewCondition}
+                style={[styles.medicalInput, { marginBottom: 8 }]}
+                outlineStyle={{ borderRadius: 8 }}
+                right={
+                  <TextInput.Icon
+                    icon="plus"
+                    onPress={() => {
+                      if (newCondition.trim()) {
+                        setMedicalInfo(prev => ({
+                          ...prev,
+                          medicalConditions: [...prev.medicalConditions, newCondition.trim()]
+                        }));
+                        setNewCondition('');
+                      }
+                    }}
+                  />
+                }
+              />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {medicalInfo?.medicalConditions?.map((condition, index) => (
+                  <Chip
+                    key={index}
+                    onClose={() => {
+                      setMedicalInfo(prev => ({
+                        ...prev,
+                        medicalConditions: prev.medicalConditions.filter((_, i) => i !== index)
+                      }));
+                    }}
+                    style={{ margin: 2 }}
+                  >
+                    {condition}
+                  </Chip>
+                ))}
+              </View>
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={saveMedicalInformation}
+              style={{ marginTop: 24, marginBottom: 8 }}
+            >
+              Save Medical Information
+            </Button>
+          </ScrollView>
         </Modal>
       </Portal>
     </ScrollView>
