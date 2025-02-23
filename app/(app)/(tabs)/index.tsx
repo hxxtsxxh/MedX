@@ -101,15 +101,6 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  takenBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -147,8 +138,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     margin: 20,
   },
   sectionTitle: {
-    fontWeight: '500',
     marginBottom: 10,
+    fontWeight: 'bold',
   },
   recentMedsContainer: undefined,
   recentMedCard: undefined,
@@ -617,7 +608,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
           <Card.Title 
             title="Today's Schedule" 
             titleStyle={{
-              fontWeight: '500',
+              fontWeight: '700',
               includeFontPadding: false,
             }}
           />
@@ -648,7 +639,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                       <Text style={styles.divider}>•</Text>
                       <Text style={styles.dosageText}>
                         {med.schedule?.dosage}
-                      </Text>
+                    </Text>
                     </View>
                     {med.schedule?.frequency !== 'daily' && (
                       <Text style={styles.scheduleText}>
@@ -661,13 +652,6 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
 
                   <View style={styles.actionsContainer}>
                     <MedicationActions medication={med} showTakeAction={true} />
-                    {getTakenMedications().includes(med.id) && (
-                      <View style={styles.takenBadge}>
-                        <Text style={{ color: theme.colors.onPrimary, fontSize: 12 }}>
-                          Taken
-                        </Text>
-                      </View>
-                    )}
                   </View>
                 </MotiView>
               ))
@@ -694,7 +678,13 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
           borderWidth: Platform.OS === 'android' ? 1 : 0,
           borderColor: 'rgba(0, 0, 0, 0.1)',
         }]}>
-          <Card.Title title="Upcoming Doses" />
+          <Card.Title 
+            title="Upcoming Doses" 
+            titleStyle={{
+              fontWeight: '700',
+              includeFontPadding: false,
+            }}
+          />
           <Card.Content>
             {loading ? (
               <ActivityIndicator />
@@ -721,7 +711,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                         <Text style={styles.divider}>•</Text>
                         <Text style={styles.dosageText}>
                           {med.schedule?.dosage}
-                        </Text>
+                      </Text>
                       </View>
 
                       <Text style={styles.scheduleText}>

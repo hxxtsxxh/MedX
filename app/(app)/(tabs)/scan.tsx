@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Platform, Pressable } from 'react-native';
-import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip, SegmentedButtons, Surface } from 'react-native-paper';
+import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip, SegmentedButtons, Surface, List } from 'react-native-paper';
 import { TimePickerModal } from 'react-native-paper-dates';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { searchMedications, type Medication, MedicationSchedule } from '../api/m
 import { useMedications } from '../../context/MedicationContext';
 import { SuccessAnimation } from '../../components/SuccessAnimation';
 import { formatTime, formatDosage, getDosageUnit, storeTime, displayTime } from '../../utils/formatters';
-import debounce from 'lodash/debounce';
+import { useDebouncedCallback } from 'use-debounce';
 import { TimePickerWrapper } from '../../components/TimePickerWrapper';
 
 interface Step {
@@ -18,12 +18,51 @@ interface Step {
   subtitle: string;
 }
 
+const DAYS_OF_WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAYS_OF_WEEK_FULL = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+const DayCircle = ({ 
+  label, 
+  selected, 
+  onPress 
+}: { 
+  label: string, 
+  selected: boolean, 
+  onPress: () => void 
+}) => {
+  const theme = useTheme();
+  
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.dayCircle,
+        {
+          backgroundColor: selected ? theme.colors.primary : 'transparent',
+          borderColor: selected ? theme.colors.primary : theme.colors.outline,
+        }
+      ]}
+    >
+      <Text
+        style={[
+          styles.dayText,
+          { color: selected ? theme.colors.onPrimary : theme.colors.onSurface }
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
+
 export default function Scan() {
   const theme = useTheme();
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [manualInputVisible, setManualInputVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
@@ -56,38 +95,28 @@ export default function Scan() {
     }
   ];
 
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weekDaysFull = {
-    'Mon': 'monday',
-    'Tue': 'tuesday',
-    'Wed': 'wednesday',
-    'Thu': 'thursday',
-    'Fri': 'friday',
-    'Sat': 'saturday',
-    'Sun': 'sunday'
-  };
-  const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
-
   // Create a debounced search function
-  const debouncedSearch = useMemo(
-    () =>
-      debounce(async (query: string) => {
-        if (query.length < 2) {
-          setSuggestions([]);
-          return;
-        }
-        
+  const debouncedSearch = useDebouncedCallback(
+    async (query: string) => {
+      if (!query.trim()) {
+        setSuggestions([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
         setLoading(true);
-        try {
-          const results = await searchMedications(query);
-          setSuggestions(results);
-        } catch (error) {
-          console.error('Error searching medications:', error);
-        } finally {
-          setLoading(false);
-        }
-      }, 300), // Wait 300ms after last keystroke before searching
-    []
+        const results = await searchMedications(query);
+        setSuggestions(results);
+      } catch (error) {
+        console.error('Error searching medications:', error);
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+        setIsTyping(false);
+      }
+    },
+    300 // 300ms delay
   );
 
   const startScan = () => {
@@ -106,9 +135,10 @@ export default function Scan() {
   };
 
   // Update the search handler
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    debouncedSearch(query);
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    setIsTyping(true);
+    debouncedSearch(text);
   };
 
   const handleAddMedication = async () => {
@@ -120,6 +150,7 @@ export default function Scan() {
             ...schedule,
             dosage: formatDosage(schedule.dosage, selectedMedication.brand_name)
           },
+          dosage_form: getMedicationDosageForm(selectedMedication),
         };
         
         // Close the modal immediately for better UX
@@ -148,7 +179,7 @@ export default function Scan() {
     setSchedule(prev => ({
       ...prev,
       frequency: freq,
-      days: freq === 'daily' ? Object.values(weekDaysFull) : [],
+      days: freq === 'daily' ? DAYS_OF_WEEK_FULL : [],
     }));
   };
 
@@ -168,12 +199,11 @@ export default function Scan() {
   };
 
   const handleDayToggle = (day: string) => {
-    const fullDay = schedule.frequency === 'weekly' ? weekDaysFull[day as keyof typeof weekDaysFull] : day;
     setSchedule(prev => ({
       ...prev,
-      days: prev.days.includes(fullDay)
-        ? prev.days.filter(d => d !== fullDay)
-        : [...prev.days, fullDay],
+      days: prev.days.includes(day)
+        ? prev.days.filter(d => d !== day)
+        : [...prev.days, day],
     }));
   };
 
@@ -200,6 +230,86 @@ export default function Scan() {
     </View>
   );
 
+  const getMedicationDosageForm = (medication: Medication) => {
+    return medication.dosage_form || 'Unknown form';
+  };
+
+  const renderSuggestions = () => (
+    <ScrollView style={styles.suggestionsContainer}>
+      {suggestions.map((med, index) => (
+        <Pressable
+          key={index}
+          onPress={() => setSelectedMedication(med)}
+          style={({ pressed }) => [
+            styles.suggestionItem,
+            {
+              backgroundColor: selectedMedication?.id === med.id
+                ? theme.colors.primaryContainer
+                : pressed 
+                  ? theme.colors.surfaceVariant 
+                  : theme.colors.surface,
+              opacity: pressed ? 0.9 : 1,
+            }
+          ]}
+        >
+          <View style={styles.suggestionContent}>
+            <View style={styles.suggestionTextContainer}>
+              <Text 
+                variant="titleMedium"
+                style={[
+                  styles.suggestionText,
+                  { 
+                    color: selectedMedication?.id === med.id
+                      ? theme.colors.onPrimaryContainer 
+                      : theme.colors.onSurface 
+                  }
+                ]}
+              >
+                {med.brand_name}
+              </Text>
+              <Text 
+                variant="bodySmall" 
+                style={{ 
+                  color: theme.colors.onSurfaceVariant,
+                  marginTop: 2,
+                  opacity: 0.8
+                }}
+              >
+                {med.generic_name}
+              </Text>
+              <View style={styles.dosageFormContainer}>
+                <Ionicons 
+                  name="medical-outline" 
+                  size={14} 
+                  color={theme.colors.secondary}
+                  style={{ marginRight: 4 }} 
+                />
+                <Text 
+                  variant="bodySmall" 
+                  style={{ 
+                    color: theme.colors.secondary,
+                    marginTop: 2,
+                    fontStyle: 'italic'
+                  }}
+                >
+                  {getMedicationDosageForm(med)}
+                </Text>
+              </View>
+            </View>
+            {selectedMedication?.id === med.id && (
+              <Ionicons 
+                name="checkmark-circle" 
+                size={24} 
+                color={theme.colors.primary} 
+                style={styles.checkIcon}
+              />
+            )}
+          </View>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+
   const renderSearchStep = () => (
     <MotiView
       from={{ opacity: 0, translateY: 20 }}
@@ -212,55 +322,18 @@ export default function Scan() {
         placeholder="Type medication name..."
         value={searchQuery}
         onChangeText={handleSearch}
-        right={<TextInput.Icon icon="magnify" />}
+        right={
+          <TextInput.Icon 
+            icon={isTyping || loading ? "loading" : "magnify"} 
+            animated={true}
+          />
+        }
         style={styles.searchInput}
       />
-      {loading ? (
+      {!isTyping && loading ? (
         <ActivityIndicator style={styles.loading} />
       ) : (
-        <ScrollView style={styles.suggestionsContainer}>
-          {suggestions.map((med, index) => (
-            <Pressable
-              key={index}
-              onPress={() => setSelectedMedication(med)}
-              style={({ pressed }) => [
-                styles.suggestionItem,
-                {
-                  backgroundColor: selectedMedication?.id === med.id
-                    ? theme.colors.primaryContainer 
-                    : theme.colors.surfaceVariant,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                }
-              ]}
-            >
-              <View style={styles.suggestionTextContainer}>
-                <Text 
-                  variant="titleMedium"
-                  style={[
-                    styles.suggestionText,
-                    { 
-                      color: selectedMedication?.id === med.id
-                        ? theme.colors.onPrimaryContainer 
-                        : theme.colors.onSurface,
-                      fontWeight: selectedMedication?.id === med.id ? '600' : '400'
-                    }
-                  ]}
-                  numberOfLines={1}
-                >
-                  {med.brand_name}
-                </Text>
-              </View>
-              {selectedMedication?.id === med.id && (
-                <Ionicons 
-                  name="checkmark-circle" 
-                  size={24} 
-                  color={theme.colors.primary} 
-                  style={styles.checkIcon}
-                />
-              )}
-            </Pressable>
-          ))}
-        </ScrollView>
+        renderSuggestions()
       )}
     </MotiView>
   );
@@ -282,7 +355,7 @@ export default function Scan() {
       <TextInput
         mode="outlined"
         label="Dosage"
-        value={schedule.dosage}
+        value={schedule.dosage.replace(/[^0-9]/g, '')}
         onChangeText={(text) => {
           const numericValue = text.replace(/[^0-9]/g, '');
           setSchedule(prev => ({
@@ -290,7 +363,12 @@ export default function Scan() {
             dosage: numericValue ? formatDosage(numericValue, selectedMedication?.brand_name || '') : ''
           }));
         }}
-        right={<TextInput.Affix text={getDosageUnit(selectedMedication?.brand_name || '')} />}
+        right={
+          <TextInput.Affix 
+            text={getDosageUnit(selectedMedication?.brand_name || '')} 
+            textStyle={{ color: theme.colors.onSurfaceVariant }}
+          />
+        }
         keyboardType="numeric"
         style={styles.dosageInput}
       />
@@ -317,98 +395,33 @@ export default function Scan() {
 
       {schedule.frequency === 'weekly' && (
         <View style={styles.daysContainer}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Select Days
-          </Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.weeklyScrollContent}
-          >
-            {weekDays.map((day) => (
-              <Pressable
-                key={day}
-                onPress={() => handleDayToggle(day)}
-                style={({ pressed }) => [
-                  styles.weeklyDayButton,
-                  {
-                    backgroundColor: schedule.days.includes(weekDaysFull[day as keyof typeof weekDaysFull])
-                      ? theme.colors.primary
-                      : 'transparent',
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                    borderColor: schedule.days.includes(weekDaysFull[day as keyof typeof weekDaysFull])
-                      ? theme.colors.primary
-                      : theme.colors.outline,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.weeklyDayName,
-                    {
-                      color: schedule.days.includes(weekDaysFull[day as keyof typeof weekDaysFull])
-                        ? theme.colors.onPrimary
-                        : theme.colors.onSurface,
-                    },
-                  ]}
-                >
-                  {day}
-                </Text>
-              </Pressable>
+          <Text variant="titleMedium" style={styles.sectionTitle}>Select Days</Text>
+          <View style={styles.weekDaysRow}>
+            {DAYS_OF_WEEK.map((day, index) => (
+              <DayCircle
+                key={`${day}_${index}`}
+                label={day}
+                selected={schedule.days.includes(DAYS_OF_WEEK_FULL[index])}
+                onPress={() => handleDayToggle(DAYS_OF_WEEK_FULL[index])}
+              />
             ))}
-          </ScrollView>
+          </View>
         </View>
       )}
 
       {schedule.frequency === 'monthly' && (
         <View style={styles.daysContainer}>
           <Text variant="titleMedium" style={styles.sectionTitle}>Select Dates</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.monthlyScrollContent}
-          >
-            {[...Array(4)].map((_, weekIndex) => (
-              <View key={weekIndex} style={styles.monthlyWeekContainer}>
-                <Text style={[styles.monthlyWeekLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  Week {weekIndex + 1}
-                </Text>
-                <View style={styles.monthlyWeekDays}>
-                  {monthDays.slice(weekIndex * 8, (weekIndex * 8) + 8).map((day) => (
-                    <Pressable
-                      key={day}
-                      onPress={() => handleDayToggle(day.toString())}
-                      style={({ pressed }) => [
-                        styles.monthlyDate,
-                        {
-                          backgroundColor: schedule.days.includes(day.toString())
-                            ? theme.colors.primary
-                            : 'transparent',
-                          transform: [{ scale: pressed ? 0.95 : 1 }],
-                          borderColor: schedule.days.includes(day.toString())
-                            ? theme.colors.primary
-                            : theme.colors.outline,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.monthlyDateText,
-                          {
-                            color: schedule.days.includes(day.toString())
-                              ? theme.colors.onPrimary
-                              : theme.colors.onSurface,
-                          },
-                        ]}
-                      >
-                        {day}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
+          <View style={styles.monthDaysGrid}>
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+              <DayCircle
+                key={day}
+                label={day.toString()}
+                selected={schedule.days.includes(day.toString())}
+                onPress={() => handleDayToggle(day.toString())}
+              />
             ))}
-          </ScrollView>
+          </View>
         </View>
       )}
 
@@ -704,9 +717,8 @@ const styles = StyleSheet.create({
   },
   suggestionContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    flex: 1,
   },
   selectedMedCard: {
     padding: 16,
@@ -792,23 +804,20 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   suggestionItem: {
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
+    elevation: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   suggestionTextContainer: {
     flex: 1,
-    marginRight: 16,
   },
   suggestionText: {
     fontSize: 16,
@@ -824,8 +833,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   daysContainer: {
-    marginTop: 8,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   timesContainer: {
     marginTop: 8,
@@ -834,21 +842,39 @@ const styles = StyleSheet.create({
   addTimeButton: {
     marginTop: 8,
   },
-  weeklyScrollContent: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+  weekDaysRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+    gap: 4,
   },
-  weeklyDayButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
+  monthDaysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 0,
+    width: 238,
+  },
+  dayCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 6,
-    borderWidth: 1,
+    margin: 0,
   },
-  weeklyDayName: {
-    fontSize: 16,
-    fontWeight: '600',
+  dayText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  medicationIcon: {
+    marginRight: 12,
+  },
+  dosageFormContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
 });

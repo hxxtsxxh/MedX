@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Keyboard, Animated } from 'react-native';
 import { useTheme, Text, TextInput, Surface, MD3Theme } from 'react-native-paper';
@@ -129,7 +130,7 @@ How can I assist you today?`,
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
+      keyboardVerticalOffset={0}
     >
       <ScrollView
         ref={scrollViewRef}
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     padding: 8,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    paddingBottom: 0,
   },
   input: {
     fontSize: 16,

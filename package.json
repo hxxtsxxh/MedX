@@ -20,7 +20,9 @@
     "@react-navigation/native": "^7.0.14",
     "@shopify/react-native-skia": "^1.11.8",
     "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
     "date-fns": "^4.1.0",
+    "events": "^3.3.0",
     "expo": "52.0.36",
     "expo-barcode-scanner": "^13.0.1",
     "expo-blur": "^14.0.3",
@@ -32,6 +34,7 @@
     "expo-image-picker": "~16.0.6",
     "expo-linear-gradient": "^14.0.2",
     "expo-linking": "^7.0.5",
+    "expo-media-library": "~17.0.6",
     "expo-notifications": "~0.29.13",
     "expo-print": "~14.0.3",
     "expo-router": "4.0.17",
@@ -47,7 +50,9 @@
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
     "react-native-chart-kit": "^6.12.0",
+    "react-native-dotenv": "^3.4.11",
     "react-native-flash-message": "^0.4.2",
+    "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "2.20.2",
     "react-native-html-to-pdf": "^0.12.0",
     "react-native-paper": "^5.12.1",
@@ -57,12 +62,16 @@
     "react-native-screens": "4.4.0",
     "react-native-svg": "15.8.0",
     "react-native-url-polyfill": "^2.0.0",
+    "react-native-vision-camera": "^4.6.4",
     "react-native-web": "^0.19.13",
     "react-native-webview": "13.12.5",
-    "victory-native": "^41.16.1"
+    "use-debounce": "^10.0.4",
+    "victory-native": "^41.16.1",
+    "vision-camera-code-scanner": "^0.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/lodash": "^4.17.15",
     "@types/react": "~18.3.12",
     "typescript": "^5.3.3"
   }

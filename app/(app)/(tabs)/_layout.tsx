@@ -20,10 +20,10 @@ export default function TabLayout() {
           pathname === '/profile' ? null : (
             <Pressable onPress={() => router.push('/profile')}>
               <Avatar.Image
-                size={48}
+                size={45}
                 style={{ 
-                  marginLeft: 16,
-                  marginTop: 8
+                  marginLeft: 20,
+                  marginBottom: 8
                 }}
                 source={
                   (auth.currentUser as User)?.photoURL
@@ -41,9 +41,6 @@ export default function TabLayout() {
           height: pathname === '/profile' ? 110 : 120,
           elevation: 0,
           shadowOpacity: 0,
-        },
-        contentStyle: {
-          paddingTop: 110,
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
