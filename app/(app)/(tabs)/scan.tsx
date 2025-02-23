@@ -14,6 +14,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { TimePickerWrapper } from '../../components/TimePickerWrapper';
 import { CameraView, useCameraPermissions, BarCodeScanningResult } from 'expo-camera';
 import { Image } from 'expo-image';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Step {
   title: string;
@@ -547,22 +548,24 @@ export default function Scan() {
   // Handle camera permissions
   if (!permission) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <ActivityIndicator />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <Text variant="bodyLarge" style={{ textAlign: "center", marginBottom: 20 }}>
-          We need your permission to scan medications
-        </Text>
-        <Button mode="contained" onPress={requestPermission}>
-          Grant Camera Access
-        </Button>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.permissionContainer}>
+          <Text variant="bodyLarge" style={{ textAlign: "center", marginBottom: 20 }}>
+            We need your permission to scan medications
+          </Text>
+          <Button mode="contained" onPress={requestPermission}>
+            Grant Camera Access
+          </Button>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
@@ -646,7 +649,7 @@ export default function Scan() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <SuccessAnimation 
         visible={showSuccess}
         message="Medication added successfully!"
@@ -766,13 +769,19 @@ export default function Scan() {
         onDismiss={() => setTimePickerVisible(false)}
         onConfirm={onTimeConfirm}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   mainContent: {
     flex: 1,
