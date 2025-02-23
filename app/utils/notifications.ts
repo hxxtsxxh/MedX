@@ -110,3 +110,5 @@ export async function scheduleMedicationNotification(
     });
   }
 } 
+
+export default Notifications;

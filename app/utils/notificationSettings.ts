@@ -19,4 +19,4 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   } catch (error) {
     console.error('Error saving notification settings:', error);
   }
-} 
+}
