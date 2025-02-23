@@ -49,10 +49,10 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         // Set up notes listener
         const notesRef = collection(userRef, 'notes');
         const q = query(notesRef, orderBy('createdAt', 'desc'));
-        
+
         unsubscribe = onSnapshot(q, (snapshot) => {
           const newNotes = snapshot.docs.map(doc => ({
-            id: doc.id,
+              id: doc.id,
             content: doc.data().content,
             createdAt: doc.data().createdAt?.toDate() || new Date(),
           }));
@@ -61,7 +61,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         }, (error) => {
           // Only log error if we're still authenticated
           if (auth.currentUser) {
-            console.error('Error loading notes:', error);
+          console.error('Error loading notes:', error);
           }
           setLoading(false);
         });
@@ -114,6 +114,6 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       {children}
     </NotesContext.Provider>
   );
-}
+} 
 
 export const useNotes = () => useContext(NotesContext); 

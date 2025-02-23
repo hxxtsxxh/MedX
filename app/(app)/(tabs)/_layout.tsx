@@ -41,7 +41,6 @@ export default function TabLayout() {
           height: pathname === '/profile' ? 110 : 120,
           elevation: 0,
           shadowOpacity: 0,
-          justifyContent: 'center',
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
