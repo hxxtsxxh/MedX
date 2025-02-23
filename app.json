@@ -19,7 +19,8 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      "react-native-vision-camera"
     ],
     "experiments": {
       "typedRoutes": true

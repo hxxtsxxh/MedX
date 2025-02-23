@@ -93,6 +93,19 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 120,
   },
+  medicationCard: {
+    marginBottom: 16,
+  },
+  medicationHeader: {
+    padding: 12,
+    gap: 4,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
 });
 
 export default function Interactions() {
@@ -266,6 +279,38 @@ If no interactions exist, return [].`;
       default: return 3;
     }
   };
+
+  const renderInteractionCard = (medication: Medication, index: number) => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+    >
+      <Surface style={styles.medicationCard} elevation={1}>
+        <View style={styles.medicationHeader}>
+          <View style={styles.titleContainer}>
+            <Text variant="titleMedium">{medication.brand_name}</Text>
+            <Text 
+              variant="bodySmall" 
+              style={{ 
+                color: theme.colors.secondary,
+                marginLeft: 8,
+                fontStyle: 'italic'
+              }}
+            >
+              {medication.dosage_form}
+            </Text>
+          </View>
+          <Text 
+            variant="bodyMedium" 
+            style={{ color: theme.colors.onSurfaceVariant }}
+          >
+            {medication.generic_name}
+          </Text>
+        </View>
+      </Surface>
+    </MotiView>
+  );
 
   if (loading) {
     return (
