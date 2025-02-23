@@ -14,7 +14,6 @@ import { useDebouncedCallback } from 'use-debounce';
 import { TimePickerWrapper } from '../../components/TimePickerWrapper';
 import { CameraView, useCameraPermissions, BarCodeScanningResult } from 'expo-camera';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Step {
   title: string;
@@ -122,11 +121,8 @@ export default function Scan() {
   const cameraRef = useRef<CameraView>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [barcodeData, setBarcodeData] = useState<string | null>(null);
-
   const [isScanning, setIsScanning] = useState(true);
   const [isAlertShowing, setIsAlertShowing] = useState(false);
-  const [isProcessingBarcode, setIsProcessingBarcode] = useState(false);
-
   
   const steps: Step[] = [
     {
@@ -551,11 +547,7 @@ export default function Scan() {
   const handleCloseManualInput = () => {
     setManualInputVisible(false);
     resetManualInputStates();
-
     setIsScanning(true); // Re-enable scanning
-
-    setIsProcessingBarcode(false); // Reset processing state
-    // Reset camera state
     if (cameraRef.current) {
       cameraRef.current.resumePreview();
     }
@@ -564,24 +556,22 @@ export default function Scan() {
   // Handle camera permissions
   if (!permission) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ActivityIndicator />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.permissionContainer}>
-          <Text variant="bodyLarge" style={{ textAlign: "center", marginBottom: 20 }}>
-            We need your permission to scan medications
-          </Text>
-          <Button mode="contained" onPress={requestPermission}>
-            Grant Camera Access
-          </Button>
-        </ScrollView>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <Text variant="bodyLarge" style={{ textAlign: "center", marginBottom: 20 }}>
+          We need your permission to scan medications
+        </Text>
+        <Button mode="contained" onPress={requestPermission}>
+          Grant Camera Access
+        </Button>
+      </View>
     );
   }
 
@@ -613,7 +603,6 @@ export default function Scan() {
 
   const renderCamera = () => (
     <View style={styles.cameraContainer}>
-
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
@@ -659,86 +648,11 @@ export default function Scan() {
           )}
         </View>
       </CameraView>
-      
-      {!manualInputVisible && (  // Only show camera when modal is not visible
-        <CameraView
-          style={styles.camera}
-          ref={cameraRef}
-          mode="picture"
-          facing="back"
-          mute={false}
-          barcodeScannerSettings={{
-            barcodeTypes: ["ean13", "ean8", "upc_e", "upc_a", "code128", "code39"],
-          }}
-          onBarcodeScanned={barcodeData || isProcessingBarcode ? undefined : async (result: BarCodeScanningResult) => {
-            if (cameraRef.current && !isProcessingBarcode) {
-              setIsProcessingBarcode(true); // Start processing
-              cameraRef.current.pausePreview();
-              
-              try {
-                const { productNdc442, productNdc532 } = extractNDC(result.data);
-
-                let details = await fetchMedicationDetails(productNdc442);
-                if (details.brandName === 'Error') {
-                  details = await fetchMedicationDetails(productNdc532);
-                }
-                
-                if (details.brandName !== 'Error' && details.brandName !== 'Not found') {
-                  const scannedMedication: Medication = {
-                    id: result.data,
-                    brand_name: details.brandName,
-                    generic_name: details.genericName,
-                    product_ndc: productNdc442,
-                    dosage_form: '',
-                  };
-                  
-                  setSelectedMedication(scannedMedication);
-                  setCurrentStep(1); // Skip the search step
-                  setManualInputVisible(true);
-                } else {
-                  Alert.alert(
-                    'Medication Not Found',
-                    'Unable to find medication details. Please try scanning again or enter details manually.',
-                    [{ text: 'OK' }],
-                  );
-                  if (cameraRef.current) {
-                    cameraRef.current.resumePreview();
-                  }
-                }
-              } catch (error) {
-                Alert.alert(
-                  'Error',
-                  'Failed to process barcode. Please try again.',
-                  [{ text: 'OK' }],
-                );
-                if (cameraRef.current) {
-                  cameraRef.current.resumePreview();
-                }
-              } finally {
-                setIsProcessingBarcode(false); // Reset processing state
-              }
-            }
-          }}
-        >
-          <View style={styles.overlay}>
-            <Text style={styles.overlayText}>
-              Position barcode in frame to scan
-            </Text>
-          </View>
-        </CameraView>
-      )}
     </View>
   );
 
-  const handleManualInputOpen = () => {
-    setManualInputVisible(true);
-    if (cameraRef.current) {
-      cameraRef.current.pausePreview();
-    }
-  };
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <SuccessAnimation 
         visible={showSuccess}
         message="Medication added successfully!"
@@ -783,7 +697,7 @@ export default function Scan() {
 
               <Button
                 mode="contained"
-                onPress={handleManualInputOpen}
+                onPress={() => setManualInputVisible(true)}
               >
                 Enter Manually Instead
               </Button>
@@ -858,19 +772,13 @@ export default function Scan() {
         onDismiss={() => setTimePickerVisible(false)}
         onConfirm={onTimeConfirm}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   mainContent: {
     flex: 1,
