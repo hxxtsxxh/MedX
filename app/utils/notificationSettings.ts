@@ -1,3 +1,4 @@
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const NOTIFICATIONS_ENABLED_KEY = 'notifications_enabled';
