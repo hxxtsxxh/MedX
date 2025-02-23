@@ -348,12 +348,12 @@ export default function Profile() {
     try {
       const result = await launchImageLibraryAsync({
         mediaTypes: MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
+      if (!result.canceled) {
         const imageUri = result.assets[0].uri;
         setProfileImage(imageUri);
         
@@ -557,7 +557,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
       .map(section => {
         if (section.includes(':')) {
           const [title, ...content] = section.split('\n');
-          return `
+        return `
             <div class="section">
               <div class="section-title">${title.trim()}</div>
               <div class="content">
