@@ -21,6 +21,7 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
     try {
       await removeMedication(medication.id);
       setDeleteDialogVisible(false);
+      setEditModalVisible(false);
     } catch (error) {
       console.error('Error deleting medication:', error);
     }
@@ -29,10 +30,14 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
   return (
     <>
       <View style={styles.container}>
+        <IconButton
+          icon="pencil"
+          size={20}
+          onPress={() => setEditModalVisible(true)}
+        />
         {showTakeAction && (
           <IconButton
-            icon={isTaken ? "undo" : "check"}
-            iconColor={isTaken ? theme.colors.error : theme.colors.primary}
+            icon={isTaken ? "check-circle" : "checkbox-blank-circle-outline"}
             size={20}
             onPress={() => {
               if (isTaken) {
@@ -41,8 +46,10 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
                 takeMedication(medication.id);
               }
             }}
+            iconColor={isTaken ? theme.colors.primary : theme.colors.onSurfaceVariant}
           />
         )}
+
         <IconButton
           icon="pencil"
           size={20}
@@ -53,7 +60,15 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
           size={20}
           onPress={() => setDeleteDialogVisible(true)}
         />
+
       </View>
+
+      <MedicationEditModal
+        visible={editModalVisible}
+        onDismiss={() => setEditModalVisible(false)}
+        medication={medication}
+        onDelete={() => setDeleteDialogVisible(true)}
+      />
 
       <Portal>
         <Dialog 
@@ -78,12 +93,6 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
           </Dialog.Actions>
         </Dialog>
       </Portal>
-
-      <MedicationEditModal
-        visible={editModalVisible}
-        onDismiss={() => setEditModalVisible(false)}
-        medication={medication}
-      />
     </>
   );
 };
@@ -92,6 +101,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   dialog: {
     borderRadius: 12,

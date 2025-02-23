@@ -103,15 +103,6 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  takenBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -149,8 +140,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     margin: 20,
   },
   sectionTitle: {
-    fontWeight: '500',
     marginBottom: 10,
+    fontWeight: 'bold',
   },
   recentMedsContainer: undefined,
   recentMedCard: undefined,
@@ -198,6 +189,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+
   medicationNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -209,6 +201,13 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.onSurface,
     flex: 1,
+
+  lateText: {
+    color: theme.colors.error,
+    fontSize: 10,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    marginLeft: 8,
   },
 });
 
@@ -216,6 +215,7 @@ function getFirstName(fullName: string | null): string {
   if (!fullName) return 'Guest';
   return fullName.split(' ')[0];
 }
+
 
 const getDosageFormIcon = (dosageForm: string): string => {
   const form = dosageForm?.toLowerCase() || '';
@@ -247,6 +247,11 @@ const getDosageFormIcon = (dosageForm: string): string => {
   } else {
     return 'medical-outline'; // Default icon
   }
+
+const sortByTime = (a: Medication, b: Medication): number => {
+  const timeA = a.schedule?.times[0] || '00:00';
+  const timeB = b.schedule?.times[0] || '00:00';
+  return timeA.localeCompare(timeB);
 };
 
 export default function Home() {
@@ -389,7 +394,7 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => {/* Handle reminder settings */}}
+          onPress={() => router.push('/(app)/(tabs)/profile')}
           style={({ pressed }) => [
             styles.actionCard,
             { 
@@ -403,17 +408,31 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => {/* Handle sharing */}}
+          onPress={() => router.push('/(app)/notes')}
           style={({ pressed }) => [
             styles.actionCard,
             { 
               backgroundColor: theme.colors.surfaceVariant,
               transform: [{ scale: pressed ? 0.98 : 1 }],
+              marginTop: 2
             }
           ]}
         >
-          <Ionicons name="share-social-outline" size={24} color={theme.colors.primary} />
-          <Text variant="bodyMedium" style={styles.actionText}>Share With Doctor</Text>
+          <Ionicons 
+            name="journal-outline" 
+            size={24} 
+            color={theme.colors.primary}
+            style={{ marginTop: 2 }}
+          />
+          <Text 
+            variant="bodyMedium" 
+            style={[
+              styles.actionText,
+              { marginTop: 2 }
+            ]}
+          >
+            Daily Notes
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -601,6 +620,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
     }
   };
 
+
   const renderMedicationItem = (med: Medication, index: number) => (
     <MotiView
       key={med.id}
@@ -661,6 +681,13 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
       </View>
     </MotiView>
   );
+  const isMedicationLate = (time: string): boolean => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const now = new Date();
+    const scheduledTime = new Date();
+    scheduledTime.setHours(hours, minutes, 0);
+    return now > scheduledTime;
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -707,7 +734,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
           <Card.Title 
             title="Today's Schedule" 
             titleStyle={{
-              fontWeight: '500',
+              fontWeight: '700',
               includeFontPadding: false,
             }}
           />
@@ -715,7 +742,59 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.morning.length > 0 ? (
+
               groupedMedications.morning.map((med, index) => renderMedicationItem(med, index))
+              groupedMedications.morning
+                .sort(sortByTime)
+                .map((med, index) => (
+                  <MotiView
+                    key={med.id}
+                    from={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ type: 'timing', duration: 300, delay: index * 100 }}
+                    style={[
+                      styles.medicationItem,
+                      getTakenMedications().includes(med.id) && {
+                        opacity: 0.7,
+                        backgroundColor: theme.colors.surfaceVariant,
+                      }
+                    ]}
+                  >
+                    <View style={styles.medicationInfo}>
+                      <View style={styles.medicationHeader}>
+                        <Text style={styles.medicationName}>{med.brand_name}</Text>
+                      </View>
+                      <View style={styles.medicationDetails}>
+                        <Text style={styles.timeText}>
+                          {med.schedule?.times.map((time, index) => (
+                            <React.Fragment key={time}>
+                              {displayTime(time)}
+                              {isMedicationLate(time) && !getTakenMedications().includes(med.id) && (
+                                <Text style={styles.lateText}>   LATE</Text>
+                              )}
+                              {index < (med.schedule?.times.length || 1) - 1 ? ', ' : ''}
+                            </React.Fragment>
+                          ))}
+                        </Text>
+                        <Text style={styles.divider}>•</Text>
+                        <Text style={styles.dosageText}>
+                          {med.schedule?.dosage}
+                        </Text>
+                      </View>
+                      {med.schedule?.frequency !== 'daily' && (
+                        <Text style={styles.scheduleText}>
+                          {med.schedule?.frequency === 'weekly' 
+                            ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                            : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.actionsContainer}>
+                      <MedicationActions medication={med} showTakeAction={true} />
+                    </View>
+                  </MotiView>
+                ))
             ) : (
               <Text variant="bodyMedium" style={{
                 includeFontPadding: false,
@@ -739,13 +818,23 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
           borderWidth: Platform.OS === 'android' ? 1 : 0,
           borderColor: 'rgba(0, 0, 0, 0.1)',
         }]}>
-          <Card.Title title="Upcoming Doses" />
+          <Card.Title 
+            title="Upcoming Doses" 
+            titleStyle={{
+              fontWeight: '700',
+              includeFontPadding: false,
+            }}
+          />
           <Card.Content>
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.upcoming.length > 0 ? (
               groupedMedications.upcoming
-                .sort((a, b) => a.daysUntil - b.daysUntil)
+                .sort((a, b) => {
+                  const daysComparison = a.daysUntil - b.daysUntil;
+                  if (daysComparison !== 0) return daysComparison;
+                  return sortByTime(a, b);
+                })
                 .map((med, index) => (
                   <MotiView
                     key={`${med.id}-upcoming`}
