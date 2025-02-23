@@ -25,6 +25,18 @@ interface DrugInteraction {
   dosageImpact?: string;
 }
 
+interface Medication {
+  id: string;
+  brand_name: string;
+  generic_name: string;
+  dosage_form: string;
+  schedule?: {
+    dosage: string;
+    frequency: string;
+    times: string[];
+  };
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -110,6 +122,7 @@ export default function Interactions() {
   const { medications } = useMedications();
   const [loading, setLoading] = useState(false);
   const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const analyzeInteractions = async () => {
     if (medications.length <= 1) {
@@ -308,6 +321,15 @@ If no interactions exist, return [].`;
       </Surface>
     </MotiView>
   );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await analyzeInteractions();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (loading) {
     return (
