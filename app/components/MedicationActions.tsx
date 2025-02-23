@@ -49,6 +49,18 @@ export const MedicationActions = ({ medication, showTakeAction = true }: Medicat
             iconColor={isTaken ? theme.colors.primary : theme.colors.onSurfaceVariant}
           />
         )}
+
+        <IconButton
+          icon="pencil"
+          size={20}
+          onPress={() => setEditModalVisible(true)}
+        />
+        <IconButton
+          icon="delete"
+          size={20}
+          onPress={() => setDeleteDialogVisible(true)}
+        />
+
       </View>
 
       <MedicationEditModal
