@@ -38,7 +38,6 @@ How can I assist you today?`,
   const [dots, setDots] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Add keyboard listeners
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -55,7 +54,6 @@ How can I assist you today?`,
     };
   }, []);
 
-  // Add this animation effect
   useEffect(() => {
     let dotsInterval: NodeJS.Timeout | undefined;
     

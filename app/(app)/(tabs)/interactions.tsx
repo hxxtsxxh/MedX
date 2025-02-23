@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, ActivityIndicator, ImageBackground, RefreshControl } from 'react-native';
-import { useTheme, Text, Card, Chip, Surface, IconButton } from 'react-native-paper';
+import { useTheme, Text, Chip, Surface, IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useMedications } from '../../context/MedicationContext';
 import { analyzeDrugInteractions, type InteractionSeverity, type DrugInteraction } from '../api/drugInteractions';
@@ -138,23 +138,22 @@ export default function Interactions() {
   useEffect(() => {
     const medicationIds = medications.map(med => med.id).sort().join(',');
     
-    // Create a debounced version of analyzeInteractions
     const timeoutId = setTimeout(() => {
       analyzeInteractions();
-    }, 500); // Wait 500ms after last change before analyzing
+    }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [medications]); // Dependencies array includes medications
+  }, [medications]);
 
   const getSeverityColor = (severity: InteractionSeverity) => {
     const isDark = theme.dark;
     switch (severity) {
       case 'HIGH':
-        return isDark ? '#FF8A80' : '#D32F2F'; // Light red : Dark red
+        return isDark ? '#FF8A80' : '#D32F2F'; 
       case 'MODERATE':
-        return isDark ? '#FFD180' : '#F57C00'; // Light orange : Dark orange
+        return isDark ? '#FFD180' : '#F57C00'; 
       case 'LOW':
-        return isDark ? '#80CBC4' : '#00796B'; // Light teal : Dark teal
+        return isDark ? '#80CBC4' : '#00796B'; 
       default:
         return theme.colors.surfaceVariant;
     }
@@ -164,17 +163,16 @@ export default function Interactions() {
     const isDark = theme.dark;
     switch (severity) {
       case 'HIGH':
-        return isDark ? 'rgba(255, 138, 128, 0.2)' : 'rgba(211, 47, 47, 0.1)'; // Transparent red
+        return isDark ? 'rgba(255, 138, 128, 0.2)' : 'rgba(211, 47, 47, 0.1)'; 
       case 'MODERATE':
-        return isDark ? 'rgba(255, 209, 128, 0.2)' : 'rgba(245, 124, 0, 0.1)'; // Transparent orange
+        return isDark ? 'rgba(255, 209, 128, 0.2)' : 'rgba(245, 124, 0, 0.1)'; 
       case 'LOW':
-        return isDark ? 'rgba(128, 203, 196, 0.2)' : 'rgba(0, 121, 107, 0.1)'; // Transparent teal
+        return isDark ? 'rgba(128, 203, 196, 0.2)' : 'rgba(0, 121, 107, 0.1)';
       default:
         return theme.colors.surfaceVariant;
     }
   };
 
-  // Add this helper function to get severity rank
   const getSeverityRank = (severity: InteractionSeverity): number => {
     switch (severity) {
       case 'HIGH': return 0;

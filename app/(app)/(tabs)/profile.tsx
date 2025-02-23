@@ -10,13 +10,11 @@ import {
   MediaType 
 } from 'expo-image-picker';
 import { router } from 'expo-router';
-import { getAuth, signOut, updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from 'firebase/auth';
+import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential} from 'firebase/auth';
 import { auth } from '../../../firebaseConfig';
-import { TextInput as RNPPTextInput } from 'react-native-paper';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useMedications } from '../../context/MedicationContext';
-import { formatDosage, displayTime } from '../../utils/formatters';
+import { displayTime } from '../../utils/formatters';
 import * as Print from 'expo-print';
 import axios from 'axios';
 import { DailyNotes } from '../../components/DailyNotes';
@@ -118,7 +116,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// Add this type at the top of the file
 type MedicationSchedule = {
   days: string[];
   times: string[];
@@ -142,7 +139,6 @@ type GeminiResponse = {
   }>;
 };
 
-// Add this interface
 interface EmergencyContact {
   id: string;
   name: string;
@@ -151,7 +147,6 @@ interface EmergencyContact {
   relation?: string;
 }
 
-// Add this interface near the top with other interfaces
 interface MedicalInformation {
   age: string;
   weight: string;
@@ -163,9 +158,7 @@ interface MedicalInformation {
   weightUnit: 'lbs';
 }
 
-// Add this validation function at the top level
 const isValidPhoneNumber = (phone: string): boolean => {
-  // Basic US phone number validation (accepts formats like: 1234567890, 123-456-7890, (123) 456-7890)
   const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
   return phoneRegex.test(phone);
 };
@@ -211,7 +204,6 @@ export default function Profile() {
   const [newAllergy, setNewAllergy] = useState('');
   const [newCondition, setNewCondition] = useState('');
 
-  // Initialize profile image from auth on mount
   React.useEffect(() => {
     if (auth.currentUser?.photoURL) {
       setProfileImage(auth.currentUser.photoURL);
@@ -219,13 +211,11 @@ export default function Profile() {
   }, []);
 
   React.useEffect(() => {
-    // Hide the header for this screen
     router.setParams({
       headerShown: 'false'
     });
   }, []);
 
-  // Load emergency contacts on mount
   useEffect(() => {
     loadEmergencyContacts();
   }, []);
@@ -235,16 +225,14 @@ export default function Profile() {
     const docRef = doc(db, 'users', auth.currentUser.uid);
     const docSnap = await getDoc(docRef);
     
-    // Create default emergency contact
     const emergency911 = {
       id: 'emergency-911',
       name: 'Emergency Services',
-      type: 'emergency' as const, // Explicitly type as 'emergency'
+      type: 'emergency' as const,
       phone: '911'
     };
     
     if (!docSnap.exists()) {
-      // Create new document with default emergency contact
       await setDoc(docRef, { 
         emergencyContacts: [emergency911]
       });
@@ -252,7 +240,6 @@ export default function Profile() {
     } else {
       let contacts = docSnap.data().emergencyContacts || [];
       
-      // Add 911 if no contacts exist
       if (contacts.length === 0) {
         contacts = [emergency911];
         await updateDoc(docRef, { emergencyContacts: contacts });
@@ -262,7 +249,6 @@ export default function Profile() {
     }
   };
 
-  // Helper function to format contact type
   const formatContactType = (type: string): string => {
     switch (type) {
       case 'emergency':
@@ -276,7 +262,6 @@ export default function Profile() {
     }
   };
 
-  // Helper function to get contact title
   const getContactTitle = (contact: EmergencyContact): string => {
     if (contact.type === 'emergency') {
       return 'Emergency Services (911)';
@@ -285,14 +270,12 @@ export default function Profile() {
   };
 
   const handleCall = (contact: EmergencyContact) => {
-    // Format phone number by removing any non-numeric characters
     const phoneNumber = contact.phone.replace(/\D/g, '');
     
     let phoneUrl = Platform.OS === 'ios' 
       ? `telprompt:${phoneNumber}`
       : `tel:${phoneNumber}`;
     
-    // For emergency calls (911), use a direct tel: link
     if (contact.type === 'emergency') {
       phoneUrl = 'tel:911';
     }
@@ -307,16 +290,13 @@ export default function Profile() {
       })
       .catch(err => {
         console.error('Error making call:', err);
-        // Fallback for emergency calls
         if (contact.type === 'emergency') {
-          // Try direct emergency number
           Linking.openURL('tel:911');
         }
       });
   };
 
   const handleDeleteContact = async (contactId: string, contactType: string) => {
-    // Don't allow deletion of the main emergency contact (911)
     if (contactType === 'emergency' && contactId === 'emergency-911') {
       alert('The emergency services contact cannot be removed');
       return;
@@ -336,21 +316,19 @@ export default function Profile() {
 
   const handleEditContact = (contact: EmergencyContact) => {
     setEditingContact(contact);
-    setNewContact(contact); // Populate the form with existing contact data
+    setNewContact(contact);
     setContactModalVisible(true);
   };
 
   const handleAddContact = async () => {
     if (!auth.currentUser) return;
     
-    // Check for duplicate emergency contact
     if (newContact.type === 'emergency' && 
         emergencyContacts.some(contact => contact.type === 'emergency' && contact.id !== editingContact?.id)) {
       alert('Emergency Services (911) is already in your contacts');
       return;
     }
 
-    // Validate phone number for non-emergency contacts
     if (newContact.type !== 'emergency' && !isValidPhoneNumber(newContact.phone)) {
       alert('Please enter a valid phone number');
       return;
@@ -359,12 +337,10 @@ export default function Profile() {
     try {
       let updatedContacts: EmergencyContact[];
       if (editingContact) {
-        // Update existing contact
         updatedContacts = emergencyContacts.map(contact => 
           contact.id === editingContact.id ? { ...newContact, id: contact.id } : contact
         );
       } else {
-        // Add new contact
         const contact: EmergencyContact = {
           ...newContact,
           id: Date.now().toString(),
@@ -432,16 +408,6 @@ export default function Profile() {
     }
   };
 
-  /**
-   * @action Change Password
-   * @description Update user account password
-   * @steps
-   * 1. Click "Personal Information"
-   * 2. Click "Change Password"
-   * 3. Enter current password
-   * 4. Enter new password
-   * 5. Click "Update Password"
-   */
   const handleUpdatePassword = async () => {
     try {
       if (!currentPassword || !newPassword || !auth.currentUser?.email) {
@@ -740,7 +706,6 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
           )}
           onPress={() => {
             if (contact.type === 'emergency' && contact.id === 'emergency-911') {
-              // Don't allow editing of main emergency contact
               return;
             }
             handleEditContact(contact);
@@ -861,12 +826,12 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
     </>
   );
 
-  // Add this useEffect to load medical information
+  
   useEffect(() => {
     loadMedicalInformation();
   }, []);
 
-  // Add these functions to handle medical information
+  
   const loadMedicalInformation = async () => {
     if (!auth.currentUser) return;
     

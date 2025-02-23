@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, ActivityIndicator, Platform, Pressable, Image, useWindowDimensions, ImageBackground } from 'react-native';
-import { useTheme, Text, Card, Button, Searchbar, FAB, Portal, Modal, Chip, IconButton, MD3Theme } from 'react-native-paper';
+import { ScrollView, StyleSheet, View, ActivityIndicator, Platform, Pressable, useWindowDimensions, ImageBackground } from 'react-native';
+import { useTheme, Text, Card, Portal, Modal, MD3Theme } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMedications } from '../../context/MedicationContext';
-import { format } from 'date-fns';
 import { displayTime, getNextDoseDay, formatDaysUntil } from '../../utils/formatters';
 import { auth } from '../../../firebaseConfig';
 import { MedicationActions } from '../../components/MedicationActions';
 import type { Medication } from '../api/medications';
 import axios from 'axios';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { useAnimatedStyle, useSharedValue, interpolate } from 'react-native-reanimated';
-import Animated from 'react-native-reanimated';
 
 type GeminiResponse = {
   candidates: Array<{
@@ -148,11 +145,11 @@ const createStyles = (theme: MD3Theme) => StyleSheet.create({
     marginBottom: 10,
     fontWeight: 'bold',
   },
-  recentMedsContainer: undefined,
-  recentMedCard: undefined,
-  recentMedIcon: undefined,
-  medInitial: undefined,
-  recentMedName: undefined,
+  recentMedsContainer: {},
+  recentMedCard: {},
+  recentMedIcon: {},
+  medInitial: {},
+  recentMedName: {},
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -210,7 +207,7 @@ export default function Home() {
     const translateY = interpolate(
       scrollY.value,
       [0, height],
-      [0, height * 0.2]  // Slightly less intense parallax for dashboard
+      [0, height * 0.2]
     );
 
     return {
@@ -220,7 +217,6 @@ export default function Home() {
 
   const groupMedicationsByTime = (medications: Medication[]) => {
     const now = new Date();
-    const currentHour = now.getHours();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const currentDate = now.getDate();
     
@@ -229,7 +225,6 @@ export default function Home() {
 
       const { times, days, frequency } = med.schedule;
       
-      // Check if medication should be taken today
       const shouldTakeToday = 
         frequency === 'daily' || 
         (frequency === 'weekly' && days.includes(currentDay.toLowerCase())) ||
@@ -239,16 +234,14 @@ export default function Home() {
         const [hours] = time.split(':').map(Number);
 
         if (shouldTakeToday) {
-          // Today's medications go to Today's Schedule
           if (hours < 12) {
             groups.morning.push(med);
           } else if (hours < 17) {
-            groups.morning.push(med); // Add to morning section if it's for today
+            groups.morning.push(med);
           } else {
-            groups.morning.push(med); // Add to morning section if it's for today
+            groups.morning.push(med);
           }
         } else {
-          // Only add to upcoming if it's not for today
           const daysUntilNext = getNextDoseDay(days, frequency);
           if (daysUntilNext > 0) {
             const existingMed = groups.upcoming.find(m => m.id === med.id);
@@ -283,7 +276,7 @@ export default function Home() {
         <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.primary }]}>Daily Overview</Text>
         <View style={styles.overviewContainer}>
           <View style={[styles.overviewCard, { 
-            backgroundColor: theme.colors.primary + '15',  // 15% opacity
+            backgroundColor: theme.colors.primary + '15',
             borderWidth: 1,
             borderColor: theme.colors.primary,
           }]}>
@@ -350,7 +343,7 @@ export default function Home() {
                 shadowOpacity: 0.1,
                 shadowRadius: 3,
               } : {
-                elevation: 3, // Android shadow
+                elevation: 3,
               }),
             }
           ]}
@@ -377,7 +370,7 @@ export default function Home() {
                 shadowOpacity: 0.1,
                 shadowRadius: 3,
               } : {
-                elevation: 3, // Android shadow
+                elevation: 3,
               }),
             }
           ]}
@@ -404,7 +397,7 @@ export default function Home() {
                 shadowOpacity: 0.1,
                 shadowRadius: 3,
               } : {
-                elevation: 3, // Android shadow
+                elevation: 3,
               }),
             }
           ]}
@@ -431,7 +424,7 @@ export default function Home() {
                 shadowOpacity: 0.1,
                 shadowRadius: 3,
               } : {
-                elevation: 3, // Android shadow
+                elevation: 3,
               }),
             }
           ]}
