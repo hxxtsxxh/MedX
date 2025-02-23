@@ -74,13 +74,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.onSurface,
-    flex: 1,
   },
   medicationDetails: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 2,
   },
   timeText: {
     fontSize: 14,
@@ -189,70 +187,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-
-  medicationNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    flex: 1,
-  },
-  medicationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.onSurface,
-    flex: 1,
-
-  lateText: {
-    color: theme.colors.error,
-    fontSize: 10,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    marginLeft: 8,
-  },
 });
 
 function getFirstName(fullName: string | null): string {
   if (!fullName) return 'Guest';
   return fullName.split(' ')[0];
 }
-
-
-const getDosageFormIcon = (dosageForm: string): string => {
-  const form = dosageForm?.toLowerCase() || '';
-  
-  if (form.includes('tablet') || form.includes('pill')) {
-    return 'medical-outline';
-  } else if (form.includes('capsule')) {
-    return 'medical-outline';
-  } else if (form.includes('injection') || form.includes('injectable')) {
-    return 'fitness-outline';
-  } else if (form.includes('solution') && !form.includes('injection')) {
-    return 'beaker-outline';
-  } else if (form.includes('cream') || form.includes('ointment') || form.includes('gel')) {
-    return 'bandage-outline';
-  } else if (form.includes('inhaler') || form.includes('aerosol')) {
-    return 'cloud-outline';
-  } else if (form.includes('drops') || form.includes('ophthalmic')) {
-    return 'water-outline';
-  } else if (form.includes('patch')) {
-    return 'bandage-outline';
-  } else if (form.includes('powder')) {
-    return 'flask-outline';
-  } else if (form.includes('suspension')) {
-    return 'beaker-outline';
-  } else if (form.includes('spray')) {
-    return 'cloud-outline';
-  } else if (form.includes('syrup')) {
-    return 'beaker-outline';
-  } else {
-    return 'medical-outline'; // Default icon
-  }
-
-const sortByTime = (a: Medication, b: Medication): number => {
-  const timeA = a.schedule?.times[0] || '00:00';
-  const timeB = b.schedule?.times[0] || '00:00';
-  return timeA.localeCompare(timeB);
-};
 
 export default function Home() {
   const theme = useTheme();
@@ -316,6 +256,23 @@ export default function Home() {
   };
 
   const groupedMedications = groupMedicationsByTime(medications);
+
+  const recentMedications = [
+    { name: 'Aspirin', dosage: '81mg', time: '8:00 AM' },
+    { name: 'Lisinopril', dosage: '10mg', time: '9:00 AM' },
+    { name: 'Metformin', dosage: '500mg', time: '1:00 PM' },
+  ];
+
+  const upcomingDoses = [
+    { name: 'Vitamin D', dosage: '2000 IU', time: '3:00 PM' },
+    { name: 'Omega-3', dosage: '1000mg', time: '6:00 PM' },
+  ];
+
+  const medicationHistory = [
+    { date: '2024-02-20', medications: ['Aspirin', 'Lisinopril'] },
+    { date: '2024-02-19', medications: ['Metformin', 'Vitamin D'] },
+    { date: '2024-02-18', medications: ['Aspirin', 'Omega-3'] },
+  ];
 
   const renderDailyOverview = () => {
     const totalMeds = groupedMedications.morning.length;
@@ -394,7 +351,7 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(app)/(tabs)/profile')}
+          onPress={() => {/* Handle reminder settings */}}
           style={({ pressed }) => [
             styles.actionCard,
             { 
@@ -408,31 +365,17 @@ export default function Home() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(app)/notes')}
+          onPress={() => {/* Handle sharing */}}
           style={({ pressed }) => [
             styles.actionCard,
             { 
               backgroundColor: theme.colors.surfaceVariant,
               transform: [{ scale: pressed ? 0.98 : 1 }],
-              marginTop: 2
             }
           ]}
         >
-          <Ionicons 
-            name="journal-outline" 
-            size={24} 
-            color={theme.colors.primary}
-            style={{ marginTop: 2 }}
-          />
-          <Text 
-            variant="bodyMedium" 
-            style={[
-              styles.actionText,
-              { marginTop: 2 }
-            ]}
-          >
-            Daily Notes
-          </Text>
+          <Ionicons name="share-social-outline" size={24} color={theme.colors.primary} />
+          <Text variant="bodyMedium" style={styles.actionText}>Share With Doctor</Text>
         </Pressable>
       </View>
     </View>
@@ -620,75 +563,6 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
     }
   };
 
-
-  const renderMedicationItem = (med: Medication, index: number) => (
-    <MotiView
-      key={med.id}
-      from={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ type: 'timing', duration: 300, delay: index * 100 }}
-      style={[
-        styles.medicationItem,
-        getTakenMedications().includes(med.id) && {
-          opacity: 0.7,
-          backgroundColor: theme.colors.surfaceVariant,
-        }
-      ]}
-    >
-      <View style={styles.medicationInfo}>
-        <View style={styles.medicationNameContainer}>
-          <Text 
-            style={styles.medicationName}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {med.brand_name}
-          </Text>
-          <Ionicons 
-            name={getDosageFormIcon(med.dosage_form)}
-            size={16}
-            color={theme.colors.secondary}
-            style={{ marginLeft: 8 }}
-          />
-        </View>
-        <View style={styles.medicationDetails}>
-          <Text style={styles.timeText}>
-            {med.schedule?.times.map(displayTime).join(', ')}
-          </Text>
-          <Text style={styles.divider}>•</Text>
-          <Text style={styles.dosageText}>
-            {med.schedule?.dosage}
-          </Text>
-        </View>
-        {med.schedule?.frequency !== 'daily' && (
-          <Text style={styles.scheduleText}>
-            {med.schedule?.frequency === 'weekly' 
-              ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-              : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.actionsContainer}>
-        <MedicationActions medication={med} showTakeAction={true} showInfo={false} />
-        {getTakenMedications().includes(med.id) && (
-          <View style={styles.takenBadge}>
-            <Text style={{ color: theme.colors.onPrimary, fontSize: 12 }}>
-              Taken
-            </Text>
-          </View>
-        )}
-      </View>
-    </MotiView>
-  );
-  const isMedicationLate = (time: string): boolean => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const now = new Date();
-    const scheduledTime = new Date();
-    scheduledTime.setHours(hours, minutes, 0);
-    return now > scheduledTime;
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView>
@@ -742,59 +616,45 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
             {loading ? (
               <ActivityIndicator />
             ) : groupedMedications.morning.length > 0 ? (
-
-              groupedMedications.morning.map((med, index) => renderMedicationItem(med, index))
-              groupedMedications.morning
-                .sort(sortByTime)
-                .map((med, index) => (
-                  <MotiView
-                    key={med.id}
-                    from={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ type: 'timing', duration: 300, delay: index * 100 }}
-                    style={[
-                      styles.medicationItem,
-                      getTakenMedications().includes(med.id) && {
-                        opacity: 0.7,
-                        backgroundColor: theme.colors.surfaceVariant,
-                      }
-                    ]}
-                  >
-                    <View style={styles.medicationInfo}>
-                      <View style={styles.medicationHeader}>
-                        <Text style={styles.medicationName}>{med.brand_name}</Text>
-                      </View>
-                      <View style={styles.medicationDetails}>
-                        <Text style={styles.timeText}>
-                          {med.schedule?.times.map((time, index) => (
-                            <React.Fragment key={time}>
-                              {displayTime(time)}
-                              {isMedicationLate(time) && !getTakenMedications().includes(med.id) && (
-                                <Text style={styles.lateText}>   LATE</Text>
-                              )}
-                              {index < (med.schedule?.times.length || 1) - 1 ? ', ' : ''}
-                            </React.Fragment>
-                          ))}
-                        </Text>
-                        <Text style={styles.divider}>•</Text>
-                        <Text style={styles.dosageText}>
-                          {med.schedule?.dosage}
-                        </Text>
-                      </View>
-                      {med.schedule?.frequency !== 'daily' && (
-                        <Text style={styles.scheduleText}>
-                          {med.schedule?.frequency === 'weekly' 
-                            ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
-                            : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
-                        </Text>
-                      )}
+              groupedMedications.morning.map((med, index) => (
+                <MotiView
+                  key={med.id}
+                  from={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ type: 'timing', duration: 300, delay: index * 100 }}
+                  style={[
+                    styles.medicationItem,
+                    getTakenMedications().includes(med.id) && {
+                      opacity: 0.7,
+                      backgroundColor: theme.colors.surfaceVariant,
+                    }
+                  ]}
+                >
+                  <View style={styles.medicationInfo}>
+                    <Text style={styles.medicationName}>{med.brand_name}</Text>
+                    <View style={styles.medicationDetails}>
+                      <Text style={styles.timeText}>
+                        {med.schedule?.times.map(displayTime).join(', ')}
+                      </Text>
+                      <Text style={styles.divider}>•</Text>
+                      <Text style={styles.dosageText}>
+                        {med.schedule?.dosage}
+                    </Text>
                     </View>
+                    {med.schedule?.frequency !== 'daily' && (
+                      <Text style={styles.scheduleText}>
+                        {med.schedule?.frequency === 'weekly' 
+                          ? `Every ${med.schedule.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                          : `Monthly on day${med.schedule.days.length > 1 ? 's' : ''} ${med.schedule.days.join(', ')}`}
+                      </Text>
+                    )}
+                  </View>
 
-                    <View style={styles.actionsContainer}>
-                      <MedicationActions medication={med} showTakeAction={true} />
-                    </View>
-                  </MotiView>
-                ))
+                  <View style={styles.actionsContainer}>
+                    <MedicationActions medication={med} showTakeAction={true} />
+                  </View>
+                </MotiView>
+              ))
             ) : (
               <Text variant="bodyMedium" style={{
                 includeFontPadding: false,
@@ -830,11 +690,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
               <ActivityIndicator />
             ) : groupedMedications.upcoming.length > 0 ? (
               groupedMedications.upcoming
-                .sort((a, b) => {
-                  const daysComparison = a.daysUntil - b.daysUntil;
-                  if (daysComparison !== 0) return daysComparison;
-                  return sortByTime(a, b);
-                })
+                .sort((a, b) => a.daysUntil - b.daysUntil)
                 .map((med, index) => (
                   <MotiView
                     key={`${med.id}-upcoming`}
@@ -847,21 +703,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                     ]}
                   >
                     <View style={styles.medicationInfo}>
-                      <View style={styles.medicationNameContainer}>
-                        <Text 
-                          style={styles.medicationName}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {med.brand_name}
-                        </Text>
-                        <Ionicons 
-                          name={getDosageFormIcon(med.dosage_form)}
-                          size={16}
-                          color={theme.colors.secondary}
-                          style={{ marginRight: 50 }}
-                        />
-                      </View>
+                      <Text style={styles.medicationName}>{med.brand_name}</Text>
                       <View style={styles.medicationDetails}>
                         <Text style={styles.timeText}>
                           {med.schedule?.times.map(displayTime).join(', ')}
@@ -869,7 +711,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                         <Text style={styles.divider}>•</Text>
                         <Text style={styles.dosageText}>
                           {med.schedule?.dosage}
-                        </Text>
+                      </Text>
                       </View>
 
                       <Text style={styles.scheduleText}>
@@ -886,7 +728,7 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
                     </View>
 
                     <View style={styles.actionsContainer}>
-                      <MedicationActions medication={med} showTakeAction={false} showInfo={false} />
+                      <MedicationActions medication={med} showTakeAction={false} />
                     </View>
                   </MotiView>
                 ))
@@ -898,6 +740,40 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
 
         {renderQuickActions()}
       </ScrollView>
+
+      <Portal>
+        <Modal
+          visible={historyVisible}
+          onDismiss={() => setHistoryVisible(false)}
+          contentContainerStyle={[
+            styles.modalContainer,
+            { backgroundColor: theme.colors.surface }
+          ]}
+        >
+          <Text variant="headlineSmall" style={styles.modalTitle}>Medication History</Text>
+          {medicationHistory.map((entry, index) => (
+            <MotiView
+              key={index}
+              from={{ opacity: 0, translateY: 20 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 300, delay: index * 100 }}
+              style={styles.historyItem}
+            >
+              <Text variant="titleMedium">{entry.date}</Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {entry.medications.join(', ')}
+              </Text>
+            </MotiView>
+          ))}
+          <Button
+            mode="contained"
+            onPress={() => setHistoryVisible(false)}
+            style={styles.modalButton}
+          >
+            Close
+          </Button>
+        </Modal>
+      </Portal>
 
       <Portal>
         <Modal
