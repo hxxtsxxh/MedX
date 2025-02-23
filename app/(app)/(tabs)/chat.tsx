@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Keyboard, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Keyboard, Animated, ImageBackground } from 'react-native';
 import { useTheme, Text, TextInput, Surface, MD3Theme } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useChat } from '../../context/ChatContext';
@@ -132,6 +131,13 @@ How can I assist you today?`,
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       keyboardVerticalOffset={0}
     >
+      <ImageBackground
+        source={theme.dark 
+          ? require('../../../assets/images/Dark_Background.png') 
+          : require('../../../assets/images/Background.png')}
+        style={{ flex: 1, position: 'absolute', width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
       <ScrollView
         ref={scrollViewRef}
         style={styles.chatContainer}
@@ -267,7 +273,7 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    paddingTop: 120,
+    paddingTop: 130,
   },
   chatContent: {
     paddingHorizontal: 16,
@@ -293,7 +299,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   messageText: {
-    fontSize: 16,
+    fontSize: 13,
     lineHeight: 22,
   },
   timestamp: {
@@ -306,7 +312,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   input: {
-    fontSize: 16,
+    fontSize: 13,
     maxHeight: 100,
   },
-}); 
+});
