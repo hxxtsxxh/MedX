@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, Platform, Pressable } from 'react-native';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Platform, Pressable, Alert } from 'react-native';
 import { useTheme, Text, Button, Card, ProgressBar, ActivityIndicator, TextInput, Chip, SegmentedButtons, Surface, List } from 'react-native-paper';
 import { TimePickerModal } from 'react-native-paper-dates';
 import { MotiView } from 'moti';
@@ -12,6 +12,8 @@ import { SuccessAnimation } from '../../components/SuccessAnimation';
 import { formatTime, formatDosage, getDosageUnit, storeTime, displayTime } from '../../utils/formatters';
 import { useDebouncedCallback } from 'use-debounce';
 import { TimePickerWrapper } from '../../components/TimePickerWrapper';
+import { CameraView, useCameraPermissions, BarCodeScanningResult } from 'expo-camera';
+import { Image } from 'expo-image';
 
 interface Step {
   title: string;
@@ -55,6 +57,42 @@ const DayCircle = ({
   );
 };
 
+const extractNDC = (barcode: string): { 
+  ndc442: string;
+  productNdc442: string;
+  ndc532: string;
+  productNdc532: string;
+} => {
+  // Remove first digit and get remaining digits
+  const digits = barcode.slice(1);
+  
+  // Format as 4-4-2
+  const ndc442 = `${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8, 10)}`;
+  const productNdc442 = `${digits.slice(0, 4)}-${digits.slice(4, 8)}`;
+
+  // Format as 5-3-2
+  const ndc532 = `${digits.slice(0, 5)}-${digits.slice(5, 8)}-${digits.slice(8, 10)}`;
+  const productNdc532 = `${digits.slice(0, 5)}-${digits.slice(5, 8)}`;
+  
+  return { ndc442, productNdc442, ndc532, productNdc532 };
+};
+
+const fetchMedicationDetails = async (productNdc: string) => {
+  const API_KEY = 'XqqfbY4r5ofStBBaqHIzfhPqwDmqYkTOGzsXoAaM';
+  try {
+    const response = await fetch(
+      `https://api.fda.gov/drug/ndc.json?api_key=${API_KEY}&search=product_ndc:${productNdc}&limit=1`
+    );
+    const data = await response.json();
+    return {
+      brandName: data.results[0]?.brand_name || 'Not found',
+      genericName: data.results[0]?.generic_name || 'Not found'
+    };
+  } catch (error) {
+    return { brandName: 'Error', genericName: 'Error' };
+  }
+};
+
 export default function Scan() {
   const theme = useTheme();
   const [scanning, setScanning] = useState(false);
@@ -79,6 +117,10 @@ export default function Scan() {
   const [monthlyDays, setMonthlyDays] = useState<number[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [barcodeData, setBarcodeData] = useState<string | null>(null);
   
   const steps: Step[] = [
     {
@@ -94,6 +136,18 @@ export default function Scan() {
       subtitle: "When do you need to take it?"
     }
   ];
+
+  // Add cleanup effect at the top level, right after other hooks
+  useEffect(() => {
+    return () => {
+      if (cameraRef.current) {
+        // Note: Since pause() isn't available, we'll need a different approach
+        // We can just rely on React Native's automatic cleanup
+        // when the component unmounts
+      }
+      setPhotoUri(null);
+    };
+  }, []);
 
   // Create a debounced search function
   const debouncedSearch = useDebouncedCallback(
@@ -142,35 +196,44 @@ export default function Scan() {
   };
 
   const handleAddMedication = async () => {
-    if (selectedMedication) {
+    if (selectedMedication && schedule.dosage && schedule.times.length > 0) {
       try {
+        // Create a complete medication object with schedule
         const medicationWithSchedule = {
           ...selectedMedication,
           schedule: {
             ...schedule,
-            dosage: formatDosage(schedule.dosage, selectedMedication.brand_name)
-          },
-          dosage_form: getMedicationDosageForm(selectedMedication),
+            dosage: schedule.dosage,
+            times: schedule.times,
+            frequency: schedule.frequency,
+            days: schedule.days
+          }
         };
-        
-        // Close the modal immediately for better UX
-        setManualInputVisible(false);
-        
-        // Reset all states before showing success
-        resetManualInputStates();
-        
-        setShowSuccess(true);
-        
+
         await addMedication(medicationWithSchedule);
-        
-        // Hide success message after delay
+        setShowSuccess(true);
+        handleCloseManualInput();
+        // Reset camera state
+        if (cameraRef.current) {
+          cameraRef.current.resumePreview();
+        }
         setTimeout(() => {
           setShowSuccess(false);
         }, 2000);
       } catch (error) {
         console.error('Error adding medication:', error);
-        setManualInputVisible(true); // Reopen modal if there was an error
+        Alert.alert(
+          'Error',
+          'Failed to add medication. Please try again.',
+          [{ text: 'OK' }]
+        );
       }
+    } else {
+      Alert.alert(
+        'Missing Information',
+        'Please fill in all required medication details.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -473,173 +536,212 @@ export default function Scan() {
   const handleCloseManualInput = () => {
     setManualInputVisible(false);
     resetManualInputStates();
+    // Reset camera state
+    if (cameraRef.current) {
+      cameraRef.current.resumePreview();
+    }
   };
 
+  // Handle camera permissions
+  if (!permission) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Text variant="bodyLarge" style={{ textAlign: "center", marginBottom: 20 }}>
+          We need your permission to scan medications
+        </Text>
+        <Button mode="contained" onPress={requestPermission}>
+          Grant Camera Access
+        </Button>
+      </View>
+    );
+  }
+
+  const renderCamera = () => (
+    <View style={styles.cameraContainer}>
+      <CameraView
+        style={styles.camera}
+        ref={cameraRef}
+        mode="picture"
+        facing="back"
+        mute={false}
+        barcodeScannerSettings={{
+          barcodeTypes: ["ean13", "ean8", "upc_e", "upc_a", "code128", "code39"],
+        }}
+        onBarcodeScanned={barcodeData ? undefined : async (result: BarCodeScanningResult) => {
+          if (cameraRef.current) {
+            cameraRef.current.pausePreview();
+            
+            const { productNdc442, productNdc532 } = extractNDC(result.data);
+
+            let details = await fetchMedicationDetails(productNdc442);
+            if (details.brandName === 'Error') {
+              details = await fetchMedicationDetails(productNdc532);
+            }
+            
+            if (details.brandName !== 'Error' && details.brandName !== 'Not found') {
+              const scannedMedication: Medication = {
+                id: result.data,
+                brand_name: details.brandName,
+                generic_name: details.genericName,
+                product_ndc: productNdc442,
+                dosage_form: '',
+              };
+              
+              setSelectedMedication(scannedMedication);
+              setCurrentStep(1); // Skip the search step
+              setManualInputVisible(true);
+            } else {
+              Alert.alert(
+                'Medication Not Found',
+                'Unable to find medication details. Please try scanning again or enter details manually.',
+                [{ text: 'OK' }],
+              );
+              if (cameraRef.current) {
+                cameraRef.current.resumePreview();
+              }
+            }
+          }
+        }}
+      >
+        <View style={styles.overlay}>
+          <Text style={styles.overlayText}>
+            Position barcode in frame to scan
+          </Text>
+        </View>
+      </CameraView>
+    </View>
+  );
+
   return (
-    <>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <SuccessAnimation 
         visible={showSuccess}
         message="Medication added successfully!"
       />
-      <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <MotiView
-          from={{ opacity: 0, translateY: 20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={motiTransition}
-          style={styles.header}
-        >
-          <Text variant="headlineMedium">Scan Medication</Text>
-          <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-            Use your camera to scan medication labels
-          </Text>
-        </MotiView>
-
-        <View style={styles.scanArea}>
-          <MotiView
-            animate={{
-              scale: scanning ? [1, 1.1, 1] : 1,
-            }}
-            transition={{
-              loop: scanning,
-              duration: 2000,
-            }}
-          >
-            <Ionicons
-              name="scan-outline"
-              size={150}
-              color={theme.colors.primary}
-            />
-          </MotiView>
-          {scanning && (
-            <View style={styles.progressContainer}>
-              <ProgressBar progress={progress} color={theme.colors.primary} style={styles.progress} />
-              <Text variant="bodyMedium">Analyzing label...</Text>
-            </View>
-          )}
-        </View>
-
-        <Card style={[styles.instructionsCard, {
-          elevation: 0,
-          backgroundColor: theme.colors.surface,
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: 1,
-          },
-          shadowOpacity: 0.18,
-          shadowRadius: 1.0,
-          borderWidth: Platform.OS === 'android' ? 1 : 0,
-          borderColor: 'rgba(0, 0, 0, 0.1)',
-        }]}>
-          <Card.Title title="Scanning Instructions" />
-          <Card.Content>
-            <View style={styles.instruction}>
-              <Ionicons name="camera" size={24} color={theme.colors.primary} />
-              <Text variant="bodyMedium" style={styles.instructionText}>
-                Position the medication label within the frame
+      
+      <View style={styles.mainContent}>
+        {renderCamera()}
+        
+        <ScrollView style={styles.instructionsScroll}>
+          <Card style={[styles.instructionsCard, {
+            elevation: 0,
+            backgroundColor: theme.colors.surface,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.18,
+            shadowRadius: 1.0,
+            borderWidth: Platform.OS === 'android' ? 1 : 0,
+            borderColor: 'rgba(0, 0, 0, 0.1)',
+          }]}>
+            <Card.Content>
+              <Text variant="titleLarge" style={{ marginBottom: 12, fontWeight: 'bold' }}>
+                Scanning Instructions
               </Text>
-            </View>
-            <View style={styles.instruction}>
-              <Ionicons name="sunny" size={24} color={theme.colors.primary} />
-              <Text variant="bodyMedium" style={styles.instructionText}>
-                Ensure good lighting conditions
-              </Text>
-            </View>
-            <View style={styles.instruction}>
-              <Ionicons name="hand-left" size={24} color={theme.colors.primary} />
-              <Text variant="bodyMedium" style={styles.instructionText}>
-                Hold the device steady while scanning
-              </Text>
-            </View>
-          </Card.Content>
-        </Card>
+              <View style={[styles.instruction, { marginBottom: 10 }]}>
+                <Ionicons name="camera" size={24} color={theme.colors.primary} />
+                <Text variant="bodyMedium" style={styles.instructionText}>
+                  Position the medication label within the frame
+                </Text>
+              </View>
+              <View style={[styles.instruction, { marginBottom: 10 }]}>
+                <Ionicons name="sunny" size={24} color={theme.colors.primary} />
+                <Text variant="bodyMedium" style={styles.instructionText}>
+                  Ensure good lighting conditions
+                </Text>
+              </View>
+              <View style={[styles.instruction, { marginBottom: 15 }]}>
+                <Ionicons name="hand-left" size={24} color={theme.colors.primary} />
+                <Text variant="bodyMedium" style={styles.instructionText}>
+                  Hold the device steady while scanning
+                </Text>
+              </View>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            onPress={startScan}
-            style={styles.button}
-            disabled={scanning}
-          >
-            {scanning ? 'Scanning...' : 'Start Scan'}
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={() => setManualInputVisible(true)}
-            style={styles.button}
-          >
-            Enter Manually
-          </Button>
-        </View>
-
-        <Portal>
-          <Modal
-            visible={manualInputVisible}
-            onDismiss={handleCloseManualInput}
-            contentContainerStyle={[
-              styles.modalContainer,
-              { backgroundColor: theme.colors.surface }
-            ]}
-          >
-            <View style={styles.modalHeader}>
-              <Text variant="headlineSmall">{steps[currentStep].title}</Text>
-              <Text 
-                variant="bodyMedium" 
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                {steps[currentStep].subtitle}
-              </Text>
-            </View>
-
-            {renderStepIndicator()}
-
-            <ScrollView style={styles.modalContent}>
-              {currentStep === 0 && renderSearchStep()}
-              {currentStep === 1 && renderDosageStep()}
-              {currentStep === 2 && renderScheduleStep()}
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <Button
-                mode="outlined"
-                onPress={() => {
-                  if (currentStep === 0) {
-                    handleCloseManualInput();
-                  } else {
-                    setCurrentStep(prev => prev - 1);
-                  }
-                }}
-              >
-                {currentStep === 0 ? 'Cancel' : 'Back'}
-              </Button>
               <Button
                 mode="contained"
-                onPress={() => {
-                  if (currentStep === 2) {
-                    handleAddMedication();
-                  } else {
-                    setCurrentStep(prev => prev + 1);
-                  }
-                }}
-                disabled={
-                  (currentStep === 0 && !selectedMedication) ||
-                  (currentStep === 1 && !schedule.dosage) ||
-                  (currentStep === 2 && !schedule.times.length)
-                }
+                onPress={() => setManualInputVisible(true)}
               >
-                {currentStep === 2 ? 'Add Medication' : 'Next'}
+                Enter Manually Instead
               </Button>
-            </View>
-          </Modal>
-        </Portal>
-      </ScrollView>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </View>
+
+      <Portal>
+        <Modal
+          visible={manualInputVisible}
+          onDismiss={handleCloseManualInput}
+          contentContainerStyle={[
+            styles.modalContainer,
+            { backgroundColor: theme.colors.surface }
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Text variant="headlineSmall">{steps[currentStep].title}</Text>
+            <Text 
+              variant="bodyMedium" 
+              style={{ color: theme.colors.onSurfaceVariant }}
+            >
+              {steps[currentStep].subtitle}
+            </Text>
+          </View>
+
+          {renderStepIndicator()}
+
+          <ScrollView style={styles.modalContent}>
+            {currentStep === 0 && renderSearchStep()}
+            {currentStep === 1 && renderDosageStep()}
+            {currentStep === 2 && renderScheduleStep()}
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <Button
+              mode="outlined"
+              onPress={() => {
+                if (currentStep === 0) {
+                  handleCloseManualInput();
+                } else {
+                  setCurrentStep(prev => prev - 1);
+                }
+              }}
+            >
+              {currentStep === 0 ? 'Cancel' : 'Back'}
+            </Button>
+            <Button
+              mode="contained"
+              onPress={() => {
+                if (currentStep === 2) {
+                  handleAddMedication();
+                } else {
+                  setCurrentStep(prev => prev + 1);
+                }
+              }}
+              disabled={
+                (currentStep === 0 && !selectedMedication) ||
+                (currentStep === 1 && !schedule.dosage) ||
+                (currentStep === 2 && !schedule.times.length)
+              }
+            >
+              {currentStep === 2 ? 'Add Medication' : 'Next'}
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
 
       <TimePickerWrapper
         visible={timePickerVisible}
         onDismiss={() => setTimePickerVisible(false)}
         onConfirm={onTimeConfirm}
       />
-    </>
+    </View>
   );
 }
 
@@ -647,44 +749,75 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    paddingTop: 120,
+  mainContent: {
+    flex: 1,
+    flexDirection: 'column',
   },
-  scanArea: {
+  cameraContainer: {
+    flex: 1,
+    maxHeight: '65%',
+    paddingTop: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  camera: {
+    flex: 1,
+    width: '100%',
+    borderRadius: 12,
+  },
+  instructionsScroll: {
+    flex: 1,
+    maxHeight: '35%',
+    paddingVertical: 20,
+  },
+  instructionsCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  shutterContainer: {
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shutterBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 3,
+    borderColor: 'white',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutterBtnInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  previewContainer: {
+    flex: 1,
+    paddingTop: 120,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    marginVertical: 20,
   },
-  progressContainer: {
+  preview: {
     width: '100%',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  progress: {
-    width: '80%',
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 10,
-  },
-  instructionsCard: {
-    margin: 20,
+    aspectRatio: 3/4,
+    borderRadius: 12,
   },
   instruction: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    gap: 12,
   },
   instructionText: {
-    marginLeft: 16,
     flex: 1,
-  },
-  buttonContainer: {
-    padding: 20,
-  },
-  button: {
-    marginBottom: 10,
   },
   modalContainer: {
     position: 'absolute',
@@ -876,5 +1009,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
+  },
+  overlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  overlayText: {
+    fontSize: 16,
+    color: 'white',
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
 });
