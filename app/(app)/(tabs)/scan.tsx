@@ -122,7 +122,11 @@ export default function Scan() {
   const cameraRef = useRef<CameraView>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [barcodeData, setBarcodeData] = useState<string | null>(null);
+
+  const [isScanning, setIsScanning] = useState(true);
+  const [isAlertShowing, setIsAlertShowing] = useState(false);
   const [isProcessingBarcode, setIsProcessingBarcode] = useState(false);
+
   
   const steps: Step[] = [
     {
@@ -150,6 +154,15 @@ export default function Scan() {
       setPhotoUri(null);
     };
   }, []);
+
+  // First, add a useEffect to handle camera state
+  useEffect(() => {
+    if (manualInputVisible && cameraRef.current) {
+      cameraRef.current.pausePreview();
+    } else if (!manualInputVisible && cameraRef.current) {
+      cameraRef.current.resumePreview();
+    }
+  }, [manualInputVisible]);
 
   // Create a debounced search function
   const debouncedSearch = useDebouncedCallback(
@@ -538,6 +551,9 @@ export default function Scan() {
   const handleCloseManualInput = () => {
     setManualInputVisible(false);
     resetManualInputStates();
+
+    setIsScanning(true); // Re-enable scanning
+
     setIsProcessingBarcode(false); // Reset processing state
     // Reset camera state
     if (cameraRef.current) {
@@ -569,8 +585,81 @@ export default function Scan() {
     );
   }
 
+  const handleInvalidBarcode = () => {
+    if (cameraRef.current) {
+      cameraRef.current.pausePreview();
+    }
+    
+    // Show alert only if not already showing
+    if (!isAlertShowing) {
+      setIsAlertShowing(true);
+      Alert.alert(
+        'Invalid Barcode',
+        'This barcode is not recognized as a valid medication. Please try a different barcode or enter details manually.',
+        [{ 
+          text: 'OK',
+          onPress: () => {
+            setIsAlertShowing(false);
+            setIsScanning(true);
+            if (cameraRef.current) {
+              cameraRef.current.resumePreview();
+            }
+          }
+        }],
+        { cancelable: false } // Prevent dismissing by tapping outside
+      );
+    }
+  };
+
   const renderCamera = () => (
     <View style={styles.cameraContainer}>
+
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        onBarcodeScanned={(!isScanning || isAlertShowing) ? undefined : async (result: BarCodeScanningResult) => {
+          setIsScanning(false);
+          
+          try {
+            const { productNdc442, productNdc532 } = extractNDC(result.data);
+            let details = await fetchMedicationDetails(productNdc442);
+            if (details.brandName === 'Error') {
+              details = await fetchMedicationDetails(productNdc532);
+            }
+            
+            if (details.brandName !== 'Error' && details.brandName !== 'Not found') {
+              const scannedMedication: Medication = {
+                id: result.data,
+                brand_name: details.brandName,
+                generic_name: details.genericName,
+                product_ndc: productNdc442,
+                dosage_form: '',
+              };
+              
+              setSelectedMedication(scannedMedication);
+              setCurrentStep(1);
+              setManualInputVisible(true);
+            } else {
+              handleInvalidBarcode();
+            }
+          } catch (error) {
+            handleInvalidBarcode();
+          }
+        }}
+      >
+        <View style={[
+          StyleSheet.absoluteFill,
+          styles.cameraOverlay,
+          { backgroundColor: manualInputVisible ? 'rgba(0,0,0,0.8)' : 'transparent' }
+        ]}>
+          {!manualInputVisible && (
+            <Text style={styles.overlayText}>
+              Scan medication barcode
+            </Text>
+          )}
+        </View>
+      </CameraView>
+      
       {!manualInputVisible && (  // Only show camera when modal is not visible
         <CameraView
           style={styles.camera}
@@ -1060,5 +1149,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  cameraOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

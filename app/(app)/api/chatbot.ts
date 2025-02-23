@@ -22,7 +22,7 @@ interface DrugInfo {
   dosage_form: string;
 }
 
-const API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
+const API_KEY = process.env.GEMINI_API_KEY;
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
 
 const MEDICAL_PROMPT = {
