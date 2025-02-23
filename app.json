@@ -24,6 +24,7 @@
       "expo-router",
       "expo-font",
       "expo-barcode-scanner",
+      "react-native-vision-camera"
       [
         "expo-notifications",
         {
