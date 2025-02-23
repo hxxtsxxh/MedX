@@ -67,7 +67,8 @@
     "react-native-webview": "13.12.5",
     "use-debounce": "^10.0.4",
     "victory-native": "^41.16.1",
-    "vision-camera-code-scanner": "^0.2.0"
+    "vision-camera-code-scanner": "^0.2.0",
+    "expo-image": "~2.0.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
