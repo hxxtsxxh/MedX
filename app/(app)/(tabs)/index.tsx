@@ -271,22 +271,6 @@ export default function Home() {
 
   const groupedMedications = groupMedicationsByTime(medications);
 
-  const recentMedications = [
-    { name: 'Aspirin', dosage: '81mg', time: '8:00 AM' },
-    { name: 'Lisinopril', dosage: '10mg', time: '9:00 AM' },
-    { name: 'Metformin', dosage: '500mg', time: '1:00 PM' },
-  ];
-
-  const upcomingDoses = [
-    { name: 'Vitamin D', dosage: '2000 IU', time: '3:00 PM' },
-    { name: 'Omega-3', dosage: '1000mg', time: '6:00 PM' },
-  ];
-
-  const medicationHistory = [
-    { date: '2024-02-20', medications: ['Aspirin', 'Lisinopril'] },
-    { date: '2024-02-19', medications: ['Metformin', 'Vitamin D'] },
-    { date: '2024-02-18', medications: ['Aspirin', 'Omega-3'] },
-  ];
 
   const renderDailyOverview = () => {
     const totalMeds = groupedMedications.morning.length;
@@ -460,7 +444,7 @@ export default function Home() {
   );
 
   const generateMedicationReport = async (medications: Medication[]): Promise<string> => {
-    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisX7mCVeSnGiA';
+    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
     const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
     try {
@@ -504,22 +488,53 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
         {
           contents: [{
+            role: 'user',
             parts: [{
               text: prompt
             }]
-          }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
         }
       );
 
-      // Process the response to ensure proper formatting
+      if (!response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error('Invalid response format from Gemini API');
+      }
+
       const content = response.data.candidates[0].content.parts[0].text
-        .replace(/```/g, '') // Remove any markdown code blocks
-        .replace(/\n\n+/g, '\n\n') // Reduce multiple line breaks to double
+        .replace(/```/g, '')
+        .replace(/\n\n+/g, '\n\n')
         .trim();
 
       return content;
     } catch (error) {
       console.error('Error generating report with Gemini:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('API Error details:', error.response?.data);
+      }
       throw new Error('Failed to generate medication report');
     }
   };

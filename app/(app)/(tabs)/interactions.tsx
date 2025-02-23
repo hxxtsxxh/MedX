@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View, ActivityIndicator, ImageBackground, Refre
 import { useTheme, Text, Card, Chip, Surface, IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
 import { useMedications } from '../../context/MedicationContext';
-import axios from 'axios';
+import { analyzeDrugInteractions, type InteractionSeverity, type DrugInteraction } from '../api/drugInteractions';
 
 type GeminiResponse = {
   candidates: Array<{
@@ -14,16 +14,6 @@ type GeminiResponse = {
     };
   }>;
 };
-
-type InteractionSeverity = 'HIGH' | 'MODERATE' | 'LOW' | 'NONE';
-
-interface DrugInteraction {
-  medications: string[];
-  description: string;
-  severity: InteractionSeverity;
-  recommendation: string;
-  dosageImpact?: string;
-}
 
 interface Medication {
   id: string;
@@ -134,108 +124,9 @@ export default function Interactions() {
     }
     
     setLoading(true);
-    const GEMINI_API_KEY = 'AIzaSyBv4-T7H8BIPqyoWx7BXisXy7mCVeSnGiA';
-    const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
-
     try {
-      const medicationNames = medications.map(med => ({
-        name: med.brand_name,
-        generic: med.generic_name,
-        dosage: med.schedule?.dosage || 'unknown dosage',
-        frequency: med.schedule?.frequency || 'unknown frequency',
-        times: med.schedule?.times || []
-      }));
-
-      const prompt = `As a clinical pharmacist, analyze these medications for ALL potential drug interactions, considering both the medications and their dosages.
-Return ONLY a JSON array containing every possible interaction between the medications. Each interaction must follow this exact structure:
-{
-  "medications": string[],
-  "severity": "HIGH" | "MODERATE" | "LOW",
-  "description": string,
-  "recommendation": string,
-  "dosageImpact": string
-}
-
-Medications to analyze with dosages:
-${medicationNames.map(med => `- ${med.name} (${med.generic}): ${med.dosage}, ${med.frequency}, taken at ${med.times.join(', ')}`).join('\n')}
-
-Important considerations for dosage-based analysis:
-1. Serotonin Syndrome Risk:
-   - Higher doses of SSRIs/SNRIs increase risk
-   - Multiple serotonergic medications at standard doses may be HIGH risk
-   - Lower doses might reduce risk to MODERATE
-
-2. Bleeding Risk:
-   - High-dose anticoagulants with any antiplatelet: HIGH risk
-   - Low-dose combinations (e.g., low-dose aspirin): MODERATE risk
-   - Timing between doses may affect risk level
-
-3. CNS Depression:
-   - Multiple CNS depressants at standard doses: HIGH risk
-   - Lower doses or spacing between medications may reduce risk
-   - Consider cumulative effects of all CNS depressants
-
-4. Cardiovascular:
-   - Dose-dependent effects on blood pressure and heart rate
-   - Consider timing of doses for blood pressure medications
-   - Cumulative effects of multiple medications
-
-5. Metabolism Interactions:
-   - Dose-dependent enzyme inhibition/induction
-   - Consider therapeutic windows of affected medications
-   - Timing between doses may affect interaction severity
-
-For each interaction:
-1. Evaluate base interaction risk
-2. Adjust severity based on actual dosages
-3. Consider timing and frequency of administration
-4. Provide specific dosage-related recommendations
-
-Example response format:
-[
-  {
-    "medications": ["Prozac 40mg", "Trazodone 100mg"],
-    "severity": "HIGH",
-    "description": "Risk of serotonin syndrome, especially concerning with higher dose of Prozac (40mg)",
-    "recommendation": "Consider reducing Prozac to 20mg if combination necessary. Monitor for symptoms of serotonin syndrome.",
-    "dosageImpact": "Current doses create high risk. Lower doses of either medication would reduce risk to moderate."
-  }
-]
-
-Analyze every combination and consider cumulative effects of multiple medications.
-If no interactions exist, return [].`;
-
-      const response = await axios.post<GeminiResponse>(
-        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-        {
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        }
-      );
-
-      let content = response.data.candidates[0].content.parts[0].text;
-      
-      // Clean up the response
-      content = content
-        .replace(/```json\n?|\n?```/g, '')
-        .replace(/^JSON:?\s*/i, '')
-        .trim();
-
-      // Attempt to parse the JSON
-      try {
-        const interactionsData = JSON.parse(content) as DrugInteraction[];
-        if (!Array.isArray(interactionsData)) {
-          throw new Error('Response is not an array');
-        }
-        setInteractions(interactionsData);
-      } catch (parseError) {
-        console.error('Parse error:', parseError);
-        console.log('Raw content:', content);
-        setInteractions([]);
-      }
+      const results = await analyzeDrugInteractions(medications);
+      setInteractions(results);
     } catch (error) {
       console.error('Error analyzing interactions:', error);
       setInteractions([]);
