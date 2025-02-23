@@ -520,12 +520,41 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
         `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
         {
           contents: [{
+            role: 'user',
             parts: [{
               text: prompt
             }]
-          }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
         }
       );
+
+      if (!response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error('Invalid response format from Gemini API');
+      }
 
       const content = response.data.candidates[0].content.parts[0].text
         .replace(/```/g, '')
@@ -535,6 +564,9 @@ ${JSON.stringify(medicationInfo, null, 2)}`;
       return content;
     } catch (error) {
       console.error('Error generating report with Gemini:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('API Error details:', error.response?.data);
+      }
       throw new Error('Failed to generate medication report');
     }
   };
