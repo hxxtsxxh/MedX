@@ -40,8 +40,8 @@ npm install -g expo-cli
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/hxxtsxxh/medx.git
-cd medx
+git clone https://github.com/hxxtsxxh/MedX.git
+cd MedX
 npm install  # or yarn install
 ```
 
@@ -53,7 +53,7 @@ npm install  # or yarn install
 ## Setting Up Other APIs
 
 1. Visit aistudio.google.com for Gemini API
-2. Visit open.fda.gov/apis for OpenFDA API
+3. Visit open.fda.gov/apis for OpenFDA API
 
 ## Running the App
 
