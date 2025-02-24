@@ -1,4 +1,5 @@
 # MedX - AI-Integrated Drug Interaction Checker
+_Created by: Heet Shah, Alyn Kosasi, Angela Huang, Selina Wu_
 
 MedX is a React Native app built using Expo that utilizes NLP, OCR, and machine learning to analyze drug labels, predict interactions, and provide risk assessments. It integrates with Firebase for authentication and data storage while maintaining a sleek and interactive UI.
 
