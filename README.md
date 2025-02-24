@@ -1,4 +1,5 @@
 # MedX - AI-Integrated Drug Interaction Checker
+_Created by: Heet Shah, Alyn Kosasi, Angela Huang, Selina Wu_
 
 MedX is a React Native app built using Expo that utilizes NLP, OCR, and machine learning to analyze drug labels, predict interactions, and provide risk assessments. It integrates with Firebase for authentication and data storage while maintaining a sleek and interactive UI.
 
@@ -39,8 +40,8 @@ npm install -g expo-cli
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/hxxtsxxh/medx.git
-cd medx
+git clone https://github.com/hxxtsxxh/MedX.git
+cd MedX
 npm install  # or yarn install
 ```
 
@@ -52,7 +53,7 @@ npm install  # or yarn install
 ## Setting Up Other APIs
 
 1. Visit aistudio.google.com for Gemini API
-2. Visit open.fda.gov/apis for OpenFDA API
+3. Visit open.fda.gov/apis for OpenFDA API
 
 ## Running the App
 
